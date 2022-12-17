@@ -5,7 +5,7 @@ that modulate targets and thereby affect the downwstream metabolism.
 
 Implementations
 ---------------
-1. Generative Adversarial Networks (Current implementing)
+1. [WGAN-GP with R-GCN for the generation of small molecules graphs](https://keras.io/examples/generative/wgan-graphs/) (Current implementing)
 2. Graph Variational AutoEncoder (Currently implementing)
 3. Mol-CycleGAN (To be implemented)
 4. JT-VAE (To be implemented)
