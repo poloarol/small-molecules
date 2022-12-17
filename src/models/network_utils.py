@@ -7,8 +7,11 @@ from tensorflow import keras
 from tensorflow.keras import layers
 
 
-class RelationalGraphLayer(layers.Layer):
-    """ """
+class RelationalConvGraphLayer(layers.Layer):
+    """
+    The Relational Convolutional Graph Layers implements
+    non-linearly transformed neighbourhood aggregations
+    """
 
     def __init__(
         self,
@@ -35,22 +38,22 @@ class RelationalGraphLayer(layers.Layer):
         atom_dim: int = input_shape[1][2]
 
         self.kernel = self.add_weight(
-            shape = (bond_dim, atom_dim, self.units),
-            initializer = self.kernel_initializer,
-            regularizer = self.kernel_regularizer,
-            trainable = True,
-            name = "Weights",
-            dtype = tf.float32
+            shape=(bond_dim, atom_dim, self.units),
+            initializer=self.kernel_initializer,
+            regularizer=self.kernel_regularizer,
+            trainable=True,
+            name="Weights",
+            dtype=tf.float32,
         )
 
         if self.use_bias:
             self.bias = self.add_weight(
-                shape = (bond_dim, 1, self.units),
-                initializer = self.bias_initializer,
-                regularizer = self.bias_regularizer,
-                trainable = True,
-                name = "bias",
-                dtype = tf.float32
+                shape=(bond_dim, 1, self.units),
+                initializer=self.bias_initializer,
+                regularizer=self.bias_regularizer,
+                trainable=True,
+                name="bias",
+                dtype=tf.float32,
             )
 
     def call(self, inputs):
@@ -68,3 +71,7 @@ class RelationalGraphLayer(layers.Layer):
             return self.activation(dp_reduced)
 
         return data_point
+
+
+if "__main__" == __name__:
+    pass
