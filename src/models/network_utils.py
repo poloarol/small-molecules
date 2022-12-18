@@ -72,6 +72,81 @@ class RelationalConvGraphLayer(layers.Layer):
 
         return data_point
 
+def build_graph_generator(
+    dense_units: int,
+    droupout_rate: float,
+    latent_dim: int,
+    adjacency_shape: int,
+    feature_shape: int,
+) -> keras.Model:
+    """
+    Build a GAN generator model
+    """
 
-if "__main__" == __name__:
+    z_space = layers.Input(shape=(latent_dim,))
+    # Propagate through one or more densely connected layers
+    latent_space = z_space
+    for unit in dense_units:
+        latent_space = layers.Dense(unit, activation="tanh")(latent_space)
+        latent_space = layers.Dropout(droupout_rate)(latent_space)
+
+    # Map outputs of previous layer (x_space) to
+    # [continous] adjacency tensors (x_adjacency)
+    x_adjacency = layers.Dense(tf.math.reduce_prod(adjacency_shape))(latent_space)
+    x_adjacency = layers.Reshape(adjacency_shape)(x_adjacency)
+    # Symmetrify tensors in the last two dimensions
+    x_adjacency = (x_adjacency + tf.transpose(x_adjacency, (0, 1, 2, 3))) / 2
+    x_adjacency = layers.Softmax(axis=1)(x_adjacency)
+
+    # Map outputs of previous layer (x)
+    # to [continuous] feature tensors (x_features)
+    x_features = layers.Dense(tf.math.reduce_prod(feature_shape))(latent_space)
+    x_features = layers.Reshape(feature_shape)(x_features)
+    x_features = layers.Softmax(axis=2)(x_features)
+
+    model = keras.Model(
+        inputs=z_space, outputs=[x_adjacency, x_features], name="Generator"
+    )
+    return model
+
+
+def build_graph_discriminator(
+    gconv_units: int,
+    dense_units: int,
+    droupout_rate: float,
+    adjacency_shape: int,
+    feature_shape: int,
+) -> keras.Model:
+    """
+    Build a graph discriminator for a GAN
+    """
+
+    adjacency = layers.Input(shape=adjacency_shape)
+    features = layers.Input(shape=feature_shape)
+
+    # Propagate through one or more graph convolutional layers
+    features_transformed = features
+    for unit in gconv_units:
+        features_transformed = RelationalConvGraphLayer(units=unit)(
+            [adjacency, features_transformed]
+        )
+
+    # Reduce 2-D representation of molecule to 1-D
+    x_space = layers.GlobalAveragePooling1D()(features_transformed)
+
+    # Propagate through one or more densely connected layers
+    for unit in dense_units:
+        x_space = layers.Dense(unit, activation="relu")(x_space)
+        x_space = layers.Dropout(droupout_rate)(x_space)
+
+    # For each molecule, output a single scalar value expressing
+    # the "realness" of the inputted molecule
+
+    x_out = layers.Dense(inputs=[adjacency, features])(x_space)
+    model = keras.Model(inputs=[adjacency, features], outputs=x_out)
+
+    return model
+
+
+if __name__ == "__main__":
     pass

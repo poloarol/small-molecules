@@ -1,0 +1,141 @@
+""" wgan.py """
+
+from typing import Final, Dict
+
+import tensorflow as tf
+from tensorflow import keras
+
+from gan import GAN
+
+from network_utils import build_graph_discriminator, build_graph_generator
+from utils.converter import Descriptors
+
+
+class GraphWGAN(GAN):
+    """
+    Wasserstein Generative Adversarial Network,
+    with Relational Convolutional Graph Neural Network
+    """
+
+    def __init__(
+        self,
+        discriminator_model: keras.Model,
+        generator_model: keras.Model,
+        batch_size: int = 32,
+    ) -> None:
+        super().__init__(discriminator_model, generator_model)
+        self.batch_size: int = batch_size
+
+    def _loss_discriminator(self, real_input, fake_input) -> float:
+        logits_real = self.discriminator(real_input, training=True)
+        logits_fake = self.discriminator(fake_input, training=True)
+        loss: float = tf.reduce_mean(logits_fake) - tf.reduce_mean(logits_real)
+        loss_gp: float = self._gradient_penalty(real_input, fake_input)
+
+        return loss + loss_gp * self.gp_weight
+
+    def _gradient_penalty(self, real_input, fake_input):
+        # Unpack graph
+        adjacency_real, features_real = real_input
+        adjacency_fake, features_fake = fake_input
+
+        # Generate interpolated grapsh (adjacency_interp and features_interp)
+        alpha = tf.random.uniform(self.batch_size)
+        alpha = tf.reshape(alpha, (self.batch_size, 1, 1, 1))
+        adjacency_interp = (adjacency_real * alpha) + (1 - alpha) * adjacency_fake
+        alpha = tf.reshape(alpha, (self.batch_size, 1, 1))
+        features_interp = (features_real * alpha) + (1 - alpha) * features_fake
+
+        # Compute the logits of interpolated graphs
+        with tf.GradientTape() as tape:
+            tape.watch(adjacency_interp)
+            tape.watch(features_interp)
+            logits = self.discriminator(
+                [adjacency_interp, features_interp], training=True
+            )
+
+        # Compute the gradients w.r.t the interpolated graphs
+        grads = tape.gradient(logits, [adjacency_interp, features_interp])
+        # Compute the gradient penalty
+        grads_adjacency_penalty = (1 - tf.norm(grads[0], axis=1)) ** 2
+        grads_features_penalty = (1 - tf.norm(grads[1], axis=2)) ** 2
+        return tf.reduce_mean(
+            tf.reduce_mean(grads_adjacency_penalty, axis=(-2, -1))
+            + tf.reduce_mean(grads_features_penalty, axis=(-1))
+        )
+
+    def train_step(self, inputs) -> Dict:
+        """
+        GAN training step
+        """
+        if isinstance(inputs[0], tuple):
+            inputs = inputs[0]
+
+        graph_real = inputs
+
+        # Train the discriminator for one or more steps
+        for _ in range(self.discriminator_steps):
+            latent_space = tf.random.normal((self.batch_size, self.latent_dim))
+
+            with tf.GradientTape() as tape:
+                graph_generated = self.generator(latent_space, training=True)
+                loss = self._loss_discriminator(graph_real, graph_generated)
+
+            grads = tape.gradient(loss, self.discriminator.trainable_weights)
+            self.optimizer_discriminator.apply_gradients(
+                zip(grads, self.discriminator.trainable_weights)
+            )
+            self.metric_discriminator.update_state(loss)
+
+        # Train the generator for one or more steps
+        for _ in range(self.generator_steps):
+            latent_space = tf.random.normal((self.batch_size, self.latent_dim))
+
+            with tf.GradientTape() as tape:
+                graph_generated = self.generator(latent_space, self.latent_dim)
+                loss = self._loss_generator(graph_generated)
+
+                grads = tape.gradient(loss, self.generator.trainable_weights)
+                self.optimizer_generator.apply_gradients(
+                    zip(grads, self.generator.trainable_weights)
+                )
+                self.metric_generator.update_state(loss)
+
+        return {metric.name: metric.result() for metric in self.metrics}
+
+
+if __name__ == "__main__":
+
+    LATENT_DIM: Final[int] = 64
+    generator = build_graph_generator(
+        dense_units=[128, 256, 512],
+        droupout_rate=0.2,
+        latent_dim=LATENT_DIM,
+        adjacency_shape=(
+            Descriptors.BOND_DIM,
+            Descriptors.NUM_ATOMS,
+            Descriptors.NUM_ATOMS,
+        ),
+        feature_shape=(Descriptors.NUM_ATOMS, Descriptors.NUM_ATOMS),
+    )
+    discriminator = build_graph_discriminator(
+        gconv_units=[128, 128, 128, 128],
+        dense_units=[512, 512],
+        droupout_rate=0.2,
+        adjacency_shape=(
+            Descriptors.BOND_DIM,
+            Descriptors.NUM_ATOMS,
+            Descriptors.NUM_ATOMS,
+        ),
+        feature_shape=(Descriptors.NUM_ATOMS, Descriptors.NUM_ATOMS),
+    )
+
+    generator.summary()
+    discriminator.summary()
+
+    wgan = GraphWGAN(generator, discriminator)
+
+    wgan.compile(
+        generator_opt=keras.optimizers.Adam(5e-4),
+        discriminator_opt=keras.optimizers.Adam(5e-4),
+    )
