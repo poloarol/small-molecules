@@ -1,20 +1,18 @@
 """ wgan.py """
 
-from typing import Final, Dict
+from typing import Dict, Final
 
 import tensorflow as tf
-from tensorflow import keras
-
+from converter import Descriptors
 from gan import GAN
-
 from network_utils import build_graph_discriminator, build_graph_generator
-from utils.converter import Descriptors
+from tensorflow import keras
 
 
 class GraphWGAN(GAN):
     """
-    Wasserstein Generative Adversarial Network,
-    with Relational Convolutional Graph Neural Network
+    Wasserstein Generative Adversarial Network with Gaussian Process,
+    (gWGAN-GP) with Relational Convolutional Graph Neural Network (RGCN)
     """
 
     def __init__(
@@ -112,22 +110,22 @@ if __name__ == "__main__":
         droupout_rate=0.2,
         latent_dim=LATENT_DIM,
         adjacency_shape=(
-            Descriptors.BOND_DIM,
-            Descriptors.NUM_ATOMS,
-            Descriptors.NUM_ATOMS,
+            Descriptors.BOND_DIM.value,
+            Descriptors.NUM_ATOMS.value,
+            Descriptors.NUM_ATOMS.value,
         ),
-        feature_shape=(Descriptors.NUM_ATOMS, Descriptors.NUM_ATOMS),
+        feature_shape=(Descriptors.NUM_ATOMS.value, Descriptors.NUM_ATOMS.value),
     )
     discriminator = build_graph_discriminator(
         gconv_units=[128, 128, 128, 128],
         dense_units=[512, 512],
         droupout_rate=0.2,
         adjacency_shape=(
-            Descriptors.BOND_DIM,
-            Descriptors.NUM_ATOMS,
-            Descriptors.NUM_ATOMS,
+            Descriptors.BOND_DIM.value,
+            Descriptors.NUM_ATOMS.value,
+            Descriptors.NUM_ATOMS.value,
         ),
-        feature_shape=(Descriptors.NUM_ATOMS, Descriptors.NUM_ATOMS),
+        feature_shape=(Descriptors.NUM_ATOMS.value, Descriptors.BOND_DIM.value),
     )
 
     generator.summary()
