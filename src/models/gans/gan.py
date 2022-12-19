@@ -38,18 +38,16 @@ class GAN(keras.Model):
         self.metric_discriminator = keras.metrics.Mean(name="loss_dis")
 
     @abstractmethod
-    def train_step(self, inputs) -> Dict:
+    def train_step(self, inputs, **kwargs) -> Dict:
         """provides methods to train the model"""
 
     @abstractmethod
     def _loss_discriminator(self, real_input, fake_input) -> float:
         """Calculate the loss of the discriminator"""
 
+    @abstractmethod
     def _loss_generator(self, generated_input) -> float:
         """Calculate the loss of the discriminator"""
-        logits_generated = self.discriminator(generated_input, training=True)
-        return -tf.reduce_mean(logits_generated)
-
 
 if __name__ == "__main__":
     pass

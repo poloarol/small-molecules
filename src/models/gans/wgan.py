@@ -62,6 +62,10 @@ class GraphWGAN(GAN):
             + tf.reduce_mean(grads_features_penalty, axis=(-1))
         )
 
+    def _loss_generator(self, generated_input) -> float:
+        logits_generated = self.discriminator(generated_input, training=True)
+        return -tf.reduce_mean(logits_generated)
+
     def train_step(self, inputs) -> Dict:
         """
         GAN training step
