@@ -81,7 +81,7 @@ if __name__ == '__main__':
                 Descriptors.NUM_ATOMS.value,
                 Descriptors.NUM_ATOMS.value,
             ),
-            feature_shape=(Descriptors.NUM_ATOMS.value, Descriptors.NUM_ATOMS.value),
+            feature_shape=(Descriptors.NUM_ATOMS.value, Descriptors.ATOM_DIM.value),
         )
         discriminator = build_graph_discriminator(
             gconv_units=[128, 128, 128, 128],
@@ -100,7 +100,7 @@ if __name__ == '__main__':
         # print("======================================================================================== \n")
         # discriminator.summary()
 
-        wgan = GraphWGAN(generator, discriminator)
+        wgan = GraphWGAN(discriminator_model=discriminator, generator_model=generator)
 
         wgan.compile(
             generator_opt=keras.optimizers.Adam(5e-4),

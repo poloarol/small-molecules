@@ -83,16 +83,17 @@ class GraphWGAN(GAN):
             inputs = inputs[0]
 
         graph_real = inputs
+        self.batch_size = tf.shape(inputs[0])[0]
 
         # Train the discriminator for one or more steps
         for _ in range(self.discriminator_steps):
             latent_space = tf.random.normal((self.batch_size, self.latent_dim))
 
-            with tf.GradientTape() as tape:
+            with tf.GradientTape() as generator_tape:
                 graph_generated = self.generator(latent_space, training=True)
                 loss = self._loss_discriminator(graph_real, graph_generated)
 
-            grads = tape.gradient(loss, self.discriminator.trainable_weights)
+            grads = generator_tape.gradient(loss, self.discriminator.trainable_weights)
             self.optimizer_discriminator.apply_gradients(
                 zip(grads, self.discriminator.trainable_weights)
             )
@@ -102,11 +103,11 @@ class GraphWGAN(GAN):
         for _ in range(self.generator_steps):
             latent_space = tf.random.normal((self.batch_size, self.latent_dim))
 
-            with tf.GradientTape() as tape:
+            with tf.GradientTape() as discriminator_tape:
                 graph_generated = self.generator(latent_space, training=True)
                 loss = self._loss_generator(graph_generated)
 
-                grads = tape.gradient(loss, self.generator.trainable_weights)
+                grads = discriminator_tape.gradient(loss, self.generator.trainable_weights)
                 self.optimizer_generator.apply_gradients(
                     zip(grads, self.generator.trainable_weights)
                 )
@@ -127,7 +128,7 @@ if __name__ == "__main__":
             Descriptors.NUM_ATOMS.value,
             Descriptors.NUM_ATOMS.value,
         ),
-        feature_shape=(Descriptors.NUM_ATOMS.value, Descriptors.NUM_ATOMS.value),
+        feature_shape=(Descriptors.NUM_ATOMS.value, Descriptors.ATOM_DIM.value),
     )
     discriminator = build_graph_discriminator(
         gconv_units=[128, 128, 128, 128],
@@ -138,7 +139,7 @@ if __name__ == "__main__":
             Descriptors.NUM_ATOMS.value,
             Descriptors.NUM_ATOMS.value,
         ),
-        feature_shape=(Descriptors.NUM_ATOMS.value, Descriptors.BOND_DIM.value),
+        feature_shape=(Descriptors.NUM_ATOMS.value, Descriptors.ATOM_DIM.value),
     )
 
     generator.summary()
