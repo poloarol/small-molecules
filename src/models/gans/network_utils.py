@@ -55,8 +55,10 @@ class RelationalConvGraphLayer(layers.Layer):
                 name="bias",
                 dtype=tf.float32,
             )
+        
+        self.built = True
 
-    def call(self, inputs):
+    def call(self, inputs, training: bool = False):
         adjacency, features = inputs
         # Aggreage informaton from neighbours
         data_point = tf.matmul(adjacency, features[:, None, :, :])
@@ -94,7 +96,7 @@ def build_graph_generator(
     x_adjacency = layers.Dense(tf.math.reduce_prod(adjacency_shape))(latent_space)
     x_adjacency = layers.Reshape(adjacency_shape)(x_adjacency)
     # Symmetrify tensors in the last two dimensions
-    x_adjacency = (x_adjacency + tf.transpose(x_adjacency, (0, 1, 2, 3))) / 2
+    x_adjacency = (x_adjacency + tf.transpose(x_adjacency, (0, 1, 3, 2))) / 2
     x_adjacency = layers.Softmax(axis=1)(x_adjacency)
 
     # Map outputs of previous layer (x)

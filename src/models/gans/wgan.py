@@ -33,25 +33,25 @@ class GraphWGAN(GAN):
         self.metric_discriminator = keras.metrics.Mean(name="loss_dis")
 
 
-    def _loss_discriminator(self, real_input, fake_input) -> float:
+    def _loss_discriminator(self, real_input, generated_input) -> float:
         logits_real = self.discriminator(real_input, training=True)
-        logits_fake = self.discriminator(fake_input, training=True)
-        loss: float = tf.reduce_mean(logits_fake) - tf.reduce_mean(logits_real)
-        loss_gp: float = self._gradient_penalty(real_input, fake_input)
+        logits_generated = self.discriminator(generated_input, training=True)
+        loss: float = tf.reduce_mean(logits_generated) - tf.reduce_mean(logits_real)
+        loss_gp: float = self._gradient_penalty(real_input, generated_input)
 
         return loss + loss_gp * self.gp_weight
 
-    def _gradient_penalty(self, real_input, fake_input):
+    def _gradient_penalty(self, real_input, generated_input):
         # Unpack graph
         adjacency_real, features_real = real_input
-        adjacency_fake, features_fake = fake_input
+        adjacency_generated, features_generated = generated_input
 
         # Generate interpolated grapsh (adjacency_interp and features_interp)
-        alpha = tf.random.uniform(self.batch_size)
+        alpha = tf.random.uniform([self.batch_size])
         alpha = tf.reshape(alpha, (self.batch_size, 1, 1, 1))
-        adjacency_interp = (adjacency_real * alpha) + (1 - alpha) * adjacency_fake
+        adjacency_interp = (adjacency_real * alpha) + (1 - alpha) * adjacency_generated
         alpha = tf.reshape(alpha, (self.batch_size, 1, 1))
-        features_interp = (features_real * alpha) + (1 - alpha) * features_fake
+        features_interp = (features_real * alpha) + (1 - alpha) * features_generated
 
         # Compute the logits of interpolated graphs
         with tf.GradientTape() as tape:

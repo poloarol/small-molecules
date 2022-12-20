@@ -10,7 +10,6 @@ from src.models.gans.wgan import GraphWGAN
 
 import tensorflow as tf
 from tensorflow import keras
-import selfies as sf
 from rdkit import Chem
 
 
@@ -67,8 +66,8 @@ if __name__ == '__main__':
     adjacency_tensors = tf.convert_to_tensor(adjacency_tensors)
     features_tensors = tf.convert_to_tensor(features_tensors)
     
-    print("adjacency_tensor.shape =", adjacency_tensors.shape)
-    print("feature_tensor.shape =", features_tensors.shape)
+    # print("adjacency_tensor.shape =", adjacency_tensors.shape)
+    # print("feature_tensor.shape =", features_tensors.shape)
     
     LATENT_DIM: Final[int] = 64
     
@@ -93,11 +92,13 @@ if __name__ == '__main__':
                 Descriptors.NUM_ATOMS.value,
                 Descriptors.NUM_ATOMS.value,
             ),
-            feature_shape=(Descriptors.NUM_ATOMS.value, Descriptors.BOND_DIM.value),
+            feature_shape=(Descriptors.NUM_ATOMS.value, Descriptors.ATOM_DIM.value),
         )
 
-        generator.summary()
-        discriminator.summary()
+        # generator.summary()
+        # print("======================================================================================== \n")
+        # print("======================================================================================== \n")
+        # discriminator.summary()
 
         wgan = GraphWGAN(generator, discriminator)
 
@@ -106,9 +107,9 @@ if __name__ == '__main__':
             discriminator_opt=keras.optimizers.Adam(5e-4),
         )
         
-        wgan.fit([adjacency_tensors, features_tensors], epochs=10, batch_size=16)        
+        wgan.fit([adjacency_tensors, features_tensors], epochs=10, batch_size=16)
 
-    elif args.vae:
-        pass
-    elif args.jt_vae:
-        pass
+    # elif args.vae:
+    #     pass
+    # elif args.jt_vae:
+    #     pass
