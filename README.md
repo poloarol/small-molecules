@@ -44,6 +44,14 @@ Models to implement
 3. Mol-CycleGAN (Currently implementing)
 4. JT-VAE (To be implemented)
 
+To-Do
+-----
+1. Complete the WGAN model and train it
+2. Add support for weights and biases
+3. Add better experimental logging
+4. Finish implementation of GVAE and JTVAE
+5. Finish implementation of mol-cycle-gan
+
 How to Use
 ----------
 TBD
