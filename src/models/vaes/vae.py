@@ -14,13 +14,14 @@ class VAE(keras.Model):
     Variational Adversarial Network
     """
 
-    def __init__(self, encoder: keras.Model, decoder: keras.Model) -> None:
-        super().__init__()
+    def __init__(self, encoder: keras.Model, decoder: keras.Model, max_length: int, **kwargs) -> None:
+        super().__init__(**kwargs)
         self.encoder: keras.Model = encoder
         self.decoder: keras.Model = decoder
-        self.property_layer: layers.Dense = layers.Dense(1)
-        self.train_total_loss: float = keras.metrics.Mean(name="train_total_loss")
-        self.val_total_loss: float = keras.metrics.Mean(name="val_total_loss")
+        self.max_length: int = max_length
+        self.property_prediction_layer = layers.Dense(1)
+        self.total_loss_tracker = keras.metrics.Mean(name="total_loss")
+        self.val_loss_tracker = keras.metrics.Mean(name="val_loss")
 
     @abstractmethod
     def train_step(self, datum) -> Dict[str, int]:
@@ -29,11 +30,25 @@ class VAE(keras.Model):
         """
 
     @abstractmethod
-    def test_step(self, datum) -> Dict[str, int]:
+    def _compute_loss(self, **kwargs):
         """
-        Testing step simulation for VAE
+        Compute the loss of the VAE
         """
 
     @abstractmethod
-    def calculate_loss(self, **kwargs) -> float:
-        """ calculate the loss at the specific training step """
+    def _gradient_penalty(self, **kwargs):
+        """
+        Compute the gradient penalty
+        """
+
+    @abstractmethod
+    def inference(self, **kwargs):
+        """
+        Sample the latent space
+        """
+
+    @abstractmethod
+    def call(self, inputs):
+        """
+        Get properties
+        """
