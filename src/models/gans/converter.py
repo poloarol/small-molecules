@@ -48,10 +48,10 @@ class DataConverter(ABC):
     def __get_atom_mapping(self) -> Dict[int, str]:
         """map atoms to indices"""
         smile_to_idx: Dict[str, int] = {
-            char: idx for idx, char in enumerate(Descriptors.SMILE_CHARSET)
+            char: idx for idx, char in enumerate(Descriptors.SMILE_CHARSET.value)
         }
         idx_to_simle: Dict[int, str] = {
-            idx: char for idx, char in enumerate(Descriptors.SMILE_CHARSET)
+            idx: char for idx, char in enumerate(Descriptors.SMILE_CHARSET.value)
         }
 
         smile_to_idx.update(idx_to_simle)
@@ -63,7 +63,7 @@ class DataConverter(ABC):
             "SINGLE": 0,
             0: Chem.BondType.SINGLE,
             "DOUBLE": 1,
-            1: Chem.BondType.DOPUBLE,
+            1: Chem.BondType.DOUBLE,
             "TRIPLE": 2,
             2: Chem.BondType.TRIPLE,
             "AROMATIC": 3,
@@ -79,18 +79,18 @@ class GraphConverter(DataConverter):
     def transform(self) -> Tuple:
         """build an adjacency and feature matrix of the molecule"""
         adjacency: np.array = np.zeros(
-            (Descriptors.BOND_DIM, Descriptors.NUM_ATOMS, Descriptors.NUM_ATOMS),
+            (Descriptors.BOND_DIM.value, Descriptors.NUM_ATOMS.value, Descriptors.NUM_ATOMS.value),
             "float32",
         )
         features: np.array = np.zeros(
-            (Descriptors.NUM_ATOMS, Descriptors.ATOM_DIM), "float32"
+            (Descriptors.NUM_ATOMS.value, Descriptors.ATOM_DIM.value), "float32"
         )
 
         # loop over each atom in the molecule
-        for _, atom in enumerate(self.molecule):
+        for _, atom in enumerate(self.molecule.GetAtoms()):
             atom_idx: int = atom.GetIdx()
             atom_type: str = self.atom_mapping[atom.GetSymbol()]
-            features[atom_idx] = np.eye(Descriptors.ATOM_DIM)[atom_type]
+            features[atom_idx] = np.eye(Descriptors.ATOM_DIM.value)[atom_type]
 
             # loop over neighbours
             for _, neigbour in enumerate(atom.GetNeighbors()):

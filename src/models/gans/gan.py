@@ -29,14 +29,6 @@ class GAN(keras.Model):
         self.gp_weight: float = gp_weight
         self.latent_dim: Final[int] = latent_dim
 
-    def compile(self, generator_opt: float, discriminator_opt: float, **kwargs):
-        """Compile the model"""
-        super().compile(**kwargs)
-        self.optimizer_generator: float = generator_opt
-        self.optimizer_discriminator: float = discriminator_opt
-        self.metric_generator = keras.metrics.Mean(name="loss_gen")
-        self.metric_discriminator = keras.metrics.Mean(name="loss_dis")
-
     @abstractmethod
     def train_step(self, inputs, **kwargs) -> Dict:
         """provides methods to train the model"""

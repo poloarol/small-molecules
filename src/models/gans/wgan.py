@@ -3,9 +3,9 @@
 from typing import Dict, Final
 
 import tensorflow as tf
-from converter import Descriptors
-from gan import GAN
-from network_utils import build_graph_discriminator, build_graph_generator
+from .converter import Descriptors
+from .gan import GAN
+from .network_utils import build_graph_discriminator, build_graph_generator
 from tensorflow import keras
 
 
@@ -23,6 +23,15 @@ class GraphWGAN(GAN):
     ) -> None:
         super().__init__(discriminator_model, generator_model)
         self.batch_size: int = batch_size
+
+    def compile(self, generator_opt: float, discriminator_opt: float, **kwargs):
+        """Compile the model"""
+        super().compile(**kwargs)
+        self.optimizer_generator: float = generator_opt
+        self.optimizer_discriminator: float = discriminator_opt
+        self.metric_generator = keras.metrics.Mean(name="loss_gen")
+        self.metric_discriminator = keras.metrics.Mean(name="loss_dis")
+
 
     def _loss_discriminator(self, real_input, fake_input) -> float:
         logits_real = self.discriminator(real_input, training=True)
@@ -94,7 +103,7 @@ class GraphWGAN(GAN):
             latent_space = tf.random.normal((self.batch_size, self.latent_dim))
 
             with tf.GradientTape() as tape:
-                graph_generated = self.generator(latent_space, self.latent_dim)
+                graph_generated = self.generator(latent_space, training=True)
                 loss = self._loss_generator(graph_generated)
 
                 grads = tape.gradient(loss, self.generator.trainable_weights)
