@@ -28,6 +28,8 @@ Although many feature and label columns come with the dataset, we'll only focus 
 QM9 dataset is a good first dataset to work with for generating graphs, as the maximum number
 of heavy (non-hydrogen) atoms found in a molecule is only nine.
 
+https://deepchemdata.s3-us-west-1.amazonaws.com/datasets/qm9.csv
+
 <b>Representing a molecular graph </b>. Molecules can naturally be expressed
 as undirected graphs G = (V, E), where V is a set of vertices (atoms), and 
 a set of edges (bonds). As for this implementation, each graph (molecule) will
