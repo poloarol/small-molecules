@@ -28,7 +28,9 @@ Although many feature and label columns come with the dataset, we'll only focus 
 QM9 dataset is a good first dataset to work with for generating graphs, as the maximum number
 of heavy (non-hydrogen) atoms found in a molecule is only nine.
 
-https://deepchemdata.s3-us-west-1.amazonaws.com/datasets/qm9.csv
+<b>QM9: </b> https://deepchemdata.s3-us-west-1.amazonaws.com/datasets/qm9.csv
+
+<b>Zink: </b> https://raw.githubusercontent.com/aspuru-guzik-group/chemical_vae/master/models/zinc_properties/250k_rndm_zinc_drugs_clean_3.csv
 
 <b>Representing a molecular graph</b>. Molecules can naturally be expressed
 as undirected graphs G = (V, E), where V is a set of vertices (atoms), and 
@@ -41,17 +43,17 @@ easier modeling.
 
 Models to implement
 ---------------
-1. [WGAN-GP with R-GCN for the generation of small molecules graphs](https://keras.io/examples/generative/wgan-graphs/) (Current implementing)
-2. Graph Variational AutoEncoder (Currently implementing)
+1. [WGAN-GP with R-GCN for the generation of small molecules graphs](https://keras.io/examples/generative/wgan-graphs/)
+2. Graph Variational AutoEncoder
 3. Mol-CycleGAN (Currently implementing)
 4. JT-VAE (To be implemented)
 
 To-Do
 -----
-1. Complete the WGAN model and train it
+1. ~~Complete the WGAN model and train it~~
 2. Add support for weights and biases
 3. Add better experimental logging
-4. Finish implementation of GVAE and JTVAE
+4. Finish implementation of ~~GVAE and~~ JT-VAE
 5. Finish implementation of mol-cycle-gan
 
 How to Use
