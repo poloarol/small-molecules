@@ -46,14 +46,14 @@ Models to implement
 1. [WGAN-GP with R-GCN for the generation of small molecules graphs](https://keras.io/examples/generative/wgan-graphs/)
 2. Graph Variational AutoEncoder
 3. Mol-CycleGAN (Currently implementing)
-4. JT-VAE (To be implemented)
+4. ~~JT-VAE (To be implemented)~~
 
 To-Do
 -----
 1. ~~Complete the WGAN model and train it~~
 2. Add support for weights and biases
 3. Add better experimental logging
-4. Finish implementation of ~~GVAE and~~ JT-VAE
+4. ~~Finish implementation of GVAE~~
 5. Finish implementation of mol-cycle-gan
 
 How to Use
