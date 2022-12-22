@@ -21,7 +21,8 @@ class VAE(keras.Model):
         self.max_length: int = max_length
         self.property_prediction_layer = layers.Dense(1)
         self.total_loss_tracker = keras.metrics.Mean(name="total_loss")
-        self.val_loss_tracker = keras.metrics.Mean(name="val_loss")
+        self.reconstruction_loss_tracker = keras.metrics.Mean(name="reconstruction_loss")
+        self.kl_loss_tracker = keras.metrics.Mean(name="kl_loss")
 
     @abstractmethod
     def train_step(self, datum) -> Dict[str, int]:

@@ -39,7 +39,7 @@ class GraphVAE(VAE):
             )
         )
         
-        kl_loss = 0.5 * tf.reduce_sum(
+        kl_loss = -0.5 * tf.reduce_sum(
             1 + z_log_var - tf.square(z_mean) - tf.math.exp(z_log_var), 1
         )
         kl_loss = tf.reduce_mean(kl_loss)
@@ -49,6 +49,7 @@ class GraphVAE(VAE):
         )
         
         graph_loss = self._gradient_penalty(real_graph, predicted_graph)
+        self.kl_loss_tracker.update_state(kl_loss)
         
         return kl_loss + property_loss + graph_loss + adjacency_loss + feature_loss
 
@@ -81,10 +82,12 @@ class GraphVAE(VAE):
         grads_adjacency_penalty = (1 - tf.norm(grads[0], axis=1)) ** 2
         grads_features_penalty = (1 - tf.norm(grads[1], axis=2)) ** 2
         
-        return tf.reduce_mean(
+        reconstruction_loss = tf.reduce_mean(
             tf.reduce_mean(grads_adjacency_penalty, axis=(-2, -1))
             + tf.reduce_mean(grads_features_penalty, axis=(-1))
         )
+        self.reconstruction_loss_tracker.update_state(reconstruction_loss)
+        return reconstruction_loss
     
     def call(self, inputs):
         z_mean, log_var = self.encoder(inputs)
@@ -131,19 +134,28 @@ class GraphVAE(VAE):
             )
         self.total_loss_tracker.update_state(total_loss)
         
-        # val_loss = self.test_step(datum)
+        self.test_step(datum)
         # self.val_total_loss_tracker.update_state(val_loss)
-        return {"loss": self.total_loss_tracker.result()}
+        return {
+            "total-loss": self.total_loss_tracker.result(), 
+            "kl-loss": self.kl_loss_tracker.result(),
+            "reconstruction-loss": self.reconstruction_loss_tracker.result(),
+            }
             
     def test_step(self, datum):
-        mol_features, mol_property, _ = datum[0]
+        adjacency_tensor, feature_tensor, qed_tensor = datum[0]
+        graph_real = [adjacency_tensor, feature_tensor]
+        
         z_mean, z_log_var, property_prediction, \
-        reconstruction_adjacency, reconstruction_features = self(mol_features, training=False)
+        reconstruction_adjacency, reconstruction_features =\
+            self(graph_real, training=False)
+            
+        graph_generated = [reconstruction_adjacency, reconstruction_features]
         
         val_loss = self._compute_loss(
-                z_log_var=z_log_var, z_mean=z_mean, qed_true=mol_property,
-                qed_predicted=property_prediction, real_graph=reconstruction_adjacency,
-                predicted_graph=reconstruction_features
+                z_log_var=z_log_var, z_mean=z_mean, qed_true=qed_tensor,
+                qed_predicted=property_prediction, real_graph=graph_real,
+                predicted_graph=graph_generated
             )
 
-        return val_loss
+        self.reconstruction_loss_tracker.update_state(val_loss)

@@ -8,6 +8,7 @@ __pycache__/
 *.so
 *~
 env/
+/models
 
 # due to using tox and pytest
 .tox

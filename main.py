@@ -1,5 +1,6 @@
 """ main.py """
 
+import os
 import argparse
 import csv
 from typing import List, Tuple, Final, Dict
@@ -81,7 +82,7 @@ if __name__ == '__main__':
         adjacency_tensors = []
         features_tensors = []
         
-        for molecule in molecules[:100]:
+        for molecule in molecules[:1000]:
             smiles = None
             try:
                 smiles = Chem.MolFromSmiles(molecule)
@@ -135,6 +136,8 @@ if __name__ == '__main__':
         )
         
         wgan.fit([adjacency_tensors, features_tensors], epochs=10, batch_size=16)
+        path_to_save_model = os.path.join(os.getcwd(), "models/gans/graph_wgan")
+        tf.saved_model.save(wgan, path_to_save_model)
 
     elif args.gvae:
         
@@ -144,7 +147,7 @@ if __name__ == '__main__':
         features_tensors = []
         qed_tensors = []
         
-        for i, molecule in enumerate(data["smiles"][:200]):
+        for i, molecule in enumerate(data["smiles"][:1000]):
             smiles = None
             try:
                 smiles = Chem.MolFromSmiles(molecule)
@@ -185,10 +188,12 @@ if __name__ == '__main__':
         
         
         
-        model = GraphVAE(encoder=encoder, decoder=decoder, max_lenth=42, latent_dim=LATENT_DIM)
-        model.compile(optimizer)
+        gvae = GraphVAE(encoder=encoder, decoder=decoder, max_lenth=42, latent_dim=LATENT_DIM)
+        gvae.compile(optimizer)
         
-        model.fit([adjacency_tensors, features_tensors, qed_tensors], epochs=10)
+        gvae.fit([adjacency_tensors, features_tensors, qed_tensors], epochs=10)
+        path_to_save_model = os.path.join(os.getcwd(), "models/vaes/graph_vae")
+        tf.saved_model.save(gvae, path_to_save_model)
         
     elif args.jt_vae:
         pass
