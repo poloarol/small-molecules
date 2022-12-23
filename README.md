@@ -51,8 +51,8 @@ Models to implement
 To-Do
 -----
 1. ~~Complete the WGAN model and train it~~
-2. Add support for weights and biases
-3. Add better experimental logging
+2. ~~Add support for weights and biases~~
+3. ~~Add better experimental logging~~
 4. ~~Finish implementation of GVAE~~
 5. Finish implementation of mol-cycle-gan
 

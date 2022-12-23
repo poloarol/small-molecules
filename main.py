@@ -94,9 +94,9 @@ if __name__ == '__main__':
     
     
     parser = argparse.ArgumentParser("Argument parser...")
-    parser.add_argument("--wgan", help="train WGAN")
-    parser.add_argument("--gvae", help="train VAE")
-    parser.add_argument("--tj_vae", help="train JT-VAE")
+    parser.add_argument("--wgan", help="train WGAN", action=True)
+    parser.add_argument("--gvae", help="train VAE", action=True)
+    parser.add_argument("--name", help="Model name", required=True, default="model")
     
     args = parser.parse_args()
     
@@ -234,10 +234,11 @@ if __name__ == '__main__':
             [adjacency_tensors, features_tensors, qed_tensors], 
             epochs=config["epochs"],
             shuffle=True,
-            callbacks=[WandbCallback()]
+            callbacks=[WandbCallback()],
+            use_multiprocessing=True
             )
-        path_to_save_model = os.path.join(os.getcwd(), "models/vaes/graph_vae_3000.h5")
-        os.makedirs(path_to_save_model, exist_ok=True)
+        path_to_save_model = os.path.join(os.getcwd(), "models/vaes")
+        os.makedirs(f"{path_to_save_model}\graph_vae_{args.name}.h5", exist_ok=True)
         gvae.save(path_to_save_model)
         
         wandb.finish()
