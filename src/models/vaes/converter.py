@@ -2,7 +2,7 @@
 
 from abc import ABC, abstractmethod
 from enum import Enum
-from typing import Dict, Final, Tuple
+from typing import Dict, Final, Tuple, Union
 
 import numpy as np
 from rdkit import Chem
@@ -35,14 +35,14 @@ class DataConverter(ABC):
     of data between smiles and graph representation
     """
 
-    def __init__(self, molecule: str | Tuple) -> None:
+    def __init__(self, molecule: Union(str, Tuple)) -> None:
         super().__init__()
         self.molecule = molecule
         self.atom_mapping = self.__get_atom_mapping()
         self.bond_mapping = self.__get_bond_mapping()
 
     @abstractmethod
-    def transform(self) -> Tuple | str:
+    def transform(self) -> Union(Tuple, str):
         """transform the data to specified format"""
 
     def __get_atom_mapping(self) -> Dict[int, str]:
