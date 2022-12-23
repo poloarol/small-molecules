@@ -6,18 +6,25 @@ from .vae import VAE
 
 import tensorflow as tf
 from tensorflow import keras
+from tensorflow.keras import layers
 
-class GraphVAE(VAE):
+class GraphVAE(keras.Model):
     """
     Graph VAE
     """
     
-    def __init__(self, encoder, decoder, max_lenth, latent_dim, **kwargs):
-        super(GraphVAE, self).__init__(encoder, decoder, max_lenth, **kwargs)
-        self.latent_dim: int = latent_dim
+    def __init__(self, encoder: keras.Model, decoder: keras.Model, latent_dim: int, **kwargs) -> None:
+        super().__init__(**kwargs)
+        self.encoder: keras.Model = encoder
+        self.decoder: keras.Model = decoder
+        self.latent_dim = latent_dim
+        self.property_prediction_layer = layers.Dense(1)
+        self.total_loss_tracker = keras.metrics.Mean(name="total_loss")
+        self.reconstruction_loss_tracker = keras.metrics.Mean(name="reconstruction_loss")
+        self.kl_loss_tracker = keras.metrics.Mean(name="kl_loss")
     
     def _compute_loss(self, z_mean,
-                      z_log_var, 
+                      z_log_var,
                       qed_true,
                       qed_predicted,
                       real_graph,

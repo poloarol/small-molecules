@@ -4,12 +4,12 @@ from typing import Dict, Final
 
 import tensorflow as tf
 from .converter import Descriptors
-from .gan import GAN
+# from .gan import GAN
 from .network_utils import build_graph_discriminator, build_graph_generator
 from tensorflow import keras
 
 
-class GraphWGAN(GAN):
+class GraphWGAN(keras.Model):
     """
     Wasserstein Generative Adversarial Network with Gaussian Process,
     (gWGAN-GP) with Relational Convolutional Graph Neural Network (RGCN)
@@ -19,10 +19,18 @@ class GraphWGAN(GAN):
         self,
         discriminator_model: keras.Model,
         generator_model: keras.Model,
-        batch_size: int = 32,
+        discriminator_steps: int = 1,
+        generator_steps: int = 1,
+        gp_weight: float = 10.0,
+        latent_dim: int = 64,
     ) -> None:
-        super().__init__(discriminator_model, generator_model)
-        self.batch_size: int = batch_size
+        super().__init__()
+        self.discriminator: keras.Model = discriminator_model
+        self.generator: keras.Model = generator_model
+        self.discriminator_steps: int = discriminator_steps
+        self.generator_steps: int = generator_steps
+        self.gp_weight: float = gp_weight
+        self.latent_dim: Final[int] = latent_dim
 
     def compile(self, generator_opt: float, discriminator_opt: float, **kwargs):
         """Compile the model"""
