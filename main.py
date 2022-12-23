@@ -94,14 +94,15 @@ if __name__ == '__main__':
     
     
     parser = argparse.ArgumentParser("Argument parser...")
-    parser.add_argument("--wgan", help="train WGAN", action=True)
-    parser.add_argument("--gvae", help="train VAE", action=True)
+    parser.add_argument("--wgan", help="train WGAN", action="store_true")
+    parser.add_argument("--gvae", help="train VAE", action="store_true")
     parser.add_argument("--name", help="Model name", required=True, default="model")
     
     args = parser.parse_args()
     
     # print("adjacency_tensor.shape =", adjacency_tensors.shape)
     # print("feature_tensor.shape =", features_tensors.shape)
+    current_time = str(datetime.datetime.now())
     
     LATENT_DIM: Final[int] = 64
     
@@ -112,7 +113,7 @@ if __name__ == '__main__':
         adjacency_tensors = []
         features_tensors = []
         
-        for molecule in molecules[:5000]:
+        for molecule in molecules:
             smiles = None
             try:
                 smiles = Chem.MolFromSmiles(molecule)
@@ -160,9 +161,7 @@ if __name__ == '__main__':
             generator_opt=config["generator_opt"],
             discriminator_opt=config["discriminator_opt"],
         )
-        
-        # wandb.watch([wgan.generator, wgan.discriminator], log="all")
-        
+                
         history = wgan.fit(
             [adjacency_tensors, features_tensors], 
             epochs=config["epochs"],
@@ -174,9 +173,9 @@ if __name__ == '__main__':
         
         wandb.finish()
         
-        path_to_save_model = os.path.join(os.getcwd(), "models/gans/graph_wgan")
+        path_to_save_model = os.path.join(os.getcwd(), "models/gans")
         os.makedirs(path_to_save_model, exist_ok=True)
-        tf.saved_model.save(wgan, path_to_save_model)
+        wgan.save(f"{path_to_save_model}\{args.name}_{current_time}.h5")
 
     elif args.gvae:
         
@@ -186,7 +185,7 @@ if __name__ == '__main__':
         features_tensors = []
         qed_tensors = []
         
-        for i, molecule in enumerate(data["smiles"][:2500]):
+        for i, molecule in enumerate(data["smiles"]):
             smiles = None
             try:
                 smiles = Chem.MolFromSmiles(molecule)
@@ -202,7 +201,6 @@ if __name__ == '__main__':
             features_tensors.append(features)
             qed_tensors.append(data["qed"][i])
         
-        current_time = str(datetime.datetime.now())
         wandb.init(project="VAE-small-molecule-generation", name=f"experiment-2500-{current_time}")
         wandb.config = wandb_initialization()
         config = wandb.config
@@ -238,7 +236,7 @@ if __name__ == '__main__':
             use_multiprocessing=True
             )
         path_to_save_model = os.path.join(os.getcwd(), "models/vaes")
-        os.makedirs(f"{path_to_save_model}\graph_vae_{args.name}.h5", exist_ok=True)
-        gvae.save(path_to_save_model)
+        os.makedirs(path_to_save_model, exist_ok=True)
+        gvae.save(f"{path_to_save_model}\{args.name}_{current_time}.h5")
         
         wandb.finish()
