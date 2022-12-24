@@ -12,7 +12,7 @@ from rdkit import Chem
 from tensorflow import keras
 from wandb.keras import WandbCallback, WandbModelCheckpoint
 
-from src.models.gans.converter import Descriptors, GraphConverter
+from src.models.gans.converter import Descriptors, GraphConverter, SmilesConverter
 from src.models.gans.network_utils import (build_graph_discriminator,
                                            build_graph_generator)
 from src.models.gans.wgan import GraphWGAN
@@ -78,8 +78,8 @@ def wandb_initialization() -> Dict[str, Any]:
             Descriptors.NUM_ATOMS.value, 
             Descriptors.ATOM_DIM.value
         ),
-        "epochs": 10,
-        "batch_size": 16,
+        "epochs": 50,
+        "batch_size": 32,
         "latent_dim": 64,
         "gconv_units": [128, 128, 128, 128],
         "discriminator_dense_units": [512, 512],
@@ -89,6 +89,23 @@ def wandb_initialization() -> Dict[str, Any]:
     
     return config
 
+def sample(model: keras.Model, batch_size: int = 32) -> List:
+    LATENT_DIM: Final[int] = 64
+    latent_space = tf.random.normal((batch_size, LATENT_DIM))
+    graph = model.predict(latent_space)
+    # obtain one-hot encoded adjacency tensor
+    adjacency = tf.argmax(graph[0], axis=1)
+    adjacency = tf.one_hot(adjacency, depth=Descriptor.BOND_DIM, axis=1)
+    # Remove potential self-loops from adjacency
+    adjacency = tf.linalg.set_diag(adjacency, tf.zeros(tf.shape(adjacency)[:-1]))
+    # obtain one-hot encoded feature tensor
+    features = tf.argmax(graph[1], axis=2)
+    features = tf.one_hot(features, depth=Descriptors.ATOM_DIM, axis=2)
+    
+    return [
+        [SmilesConverter(i).transform()] for i in range(batch_size)
+    ]
+
 
 if __name__ == '__main__':
     
@@ -97,12 +114,14 @@ if __name__ == '__main__':
     parser.add_argument("--wgan", help="train WGAN", action="store_true")
     parser.add_argument("--gvae", help="train VAE", action="store_true")
     parser.add_argument("--name", help="Model name", required=True, default="model")
+    parser.add_argument("--sample_wgan", help="sample WGAN", action="store_true")
+    parser.add_argument("--sample_gvae", help="sample VAE", action="store_true")
     
     args = parser.parse_args()
     
     # print("adjacency_tensor.shape =", adjacency_tensors.shape)
     # print("feature_tensor.shape =", features_tensors.shape)
-    current_time = str(datetime.datetime.now())
+    current_time = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
     
     LATENT_DIM: Final[int] = 64
     
@@ -113,7 +132,7 @@ if __name__ == '__main__':
         adjacency_tensors = []
         features_tensors = []
         
-        for molecule in molecules:
+        for molecule in molecules[:2000]:
             smiles = None
             try:
                 smiles = Chem.MolFromSmiles(molecule)
@@ -166,16 +185,18 @@ if __name__ == '__main__':
             [adjacency_tensors, features_tensors], 
             epochs=config["epochs"],
             batch_size=config["batch_size"],
+            shuffle=True,
             callbacks=[
                 WandbCallback()
-            ]
+            ],
+            use_multiprocessing=True
         )
         
         wandb.finish()
         
-        path_to_save_model = os.path.join(os.getcwd(), "models/gans")
+        path_to_save_model = os.path.join(os.getcwd(), f"models/gans/{args.name}/{current_time}")
         os.makedirs(path_to_save_model, exist_ok=True)
-        wgan.save(f"{path_to_save_model}\{args.name}_{current_time}.h5")
+        tf.saved_model.save(wgan, path_to_save_model)
 
     elif args.gvae:
         
@@ -185,7 +206,7 @@ if __name__ == '__main__':
         features_tensors = []
         qed_tensors = []
         
-        for i, molecule in enumerate(data["smiles"]):
+        for i, molecule in enumerate(data["smiles"][500:3000]):
             smiles = None
             try:
                 smiles = Chem.MolFromSmiles(molecule)
@@ -232,11 +253,25 @@ if __name__ == '__main__':
             [adjacency_tensors, features_tensors, qed_tensors], 
             epochs=config["epochs"],
             shuffle=True,
-            callbacks=[WandbCallback()],
+            callbacks=[
+                WandbCallback()
+                ],
             use_multiprocessing=True
             )
-        path_to_save_model = os.path.join(os.getcwd(), "models/vaes")
+        path_to_save_model = os.path.join(os.getcwd(), f"models/vaes/{args.name}/{current_time}")
         os.makedirs(path_to_save_model, exist_ok=True)
-        gvae.save(f"{path_to_save_model}\{args.name}_{current_time}.h5")
+        tf.saved_model.save(gvae, path_to_save_model)
         
         wandb.finish()
+    
+    elif args.sample_gvae:
+        path_to_save_model = os.path.join(os.getcwd(), f"models/vaes/{args.name}")
+        gvae = tf.saved_model.load(path_to_save_model)
+        
+        molecules = sample(gvae.decoder)
+        
+    elif args.sample_wgan:
+        path_to_save_model = os.path.join(os.getcwd(), f"models/gans/{args.name}")
+        wgan = tf.saved_model.load(path_to_save_model)
+        
+        molecules = sample(wgan.generator)
