@@ -217,24 +217,19 @@ class CycleGAN(GAN):
     def train_step(self,
                    inputs, batches_tuple,
                    generator_tuple, discriminator_tuple):
-        pass
-        # generator_train_function = self.__generator_train_function()
-        # first_discriminator_train_function = self.__first_discriminator_train_function()
-        # second_discriminator_train_function = self.__second_discriminator_train_function()
-        # first_generator_function, second_generator_function = generator_tuple
-        # first_discriminator, second_discriminator = discriminator_tuple
-        # pool_one, pool_two = inputs
-        # train_batch, test_batch = batches_tuple
+        generator_train_function = self.__generator_train_function()
+        first_discriminator_train_function = self.__first_discriminator_train_function()
+        second_discriminator_train_function = self.__second_discriminator_train_function()
+        first_generator_function, second_generator_function = generator_tuple
+        first_discriminator, second_discriminator = discriminator_tuple
+        pool_one, pool_two = inputs
+        train_batch, test_batch = batches_tuple
 
-        # for _, epoch in enumerate(self.epochs):
-        #     target_label = np.zeros((self.batch_size, 1))
-        #     epoch_count, datapoint_one, datapoint_two = next(train_batch)
+        for _, epoch in enumerate(self.epochs):
+            target_label = np.zeros((self.batch_size, 1))
+            epoch_count, datapoint_one, datapoint_two = next(train_batch)
             
-        #     tmp_fake_two = first_generator_function([datapoint_one, 1])[0]
-        #     tmp_fake_two = second_generator_function([datapoint_two, 1])[0]
+            tmp_fake_two = first_generator_function([datapoint_one, 1])[0]
+            tmp_fake_two = second_generator_function([datapoint_two, 1])[0]
             
-        #     if self.use_wgan:
-        #         pass
-        #     else:
-        #         pass
-        pass
+            

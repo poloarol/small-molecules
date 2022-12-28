@@ -24,9 +24,9 @@ class Descriptors(Enum):
         "Cl",
         "Br",
     ]
-    NUM_ATOMS: Final[int] = 120
+    NUM_ATOMS: Final[int] = 9 #120
     BOND_DIM: Final[int] = 5
-    ATOM_DIM: Final[int] = len(SMILE_CHARSET)
+    ATOM_DIM: Final[int] = 5 #len(SMILE_CHARSET)
 
 
 class DataConverter(ABC):
@@ -47,15 +47,28 @@ class DataConverter(ABC):
 
     def __get_atom_mapping(self) -> Dict[int, str]:
         """map atoms to indices"""
-        smile_to_idx: Dict[str, int] = {
-            char: idx for idx, char in enumerate(Descriptors.SMILE_CHARSET.value)
-        }
-        idx_to_simle: Dict[int, str] = {
-            idx: char for idx, char in enumerate(Descriptors.SMILE_CHARSET.value)
-        }
+        # smile_to_idx: Dict[str, int] = {
+        #     char: idx for idx, char in enumerate(Descriptors.SMILE_CHARSET.value)
+        # }
+        # idx_to_simle: Dict[int, str] = {
+        #     idx: char for idx, char in enumerate(Descriptors.SMILE_CHARSET.value)
+        # }
 
-        smile_to_idx.update(idx_to_simle)
-        return smile_to_idx
+        # smile_to_idx.update(idx_to_simle)
+        # return smile_to_idx
+        
+        atom_mapping = {
+            "C": 0,
+            0: "C",
+            "N": 1,
+            1: "N",
+            "O": 2,
+            2: "O",
+            "F": 3,
+            3: "F"
+        }
+        
+        return atom_mapping
 
     def __get_bond_mapping(self) -> int:
         """provides bond mapping"""
@@ -96,10 +109,18 @@ class GraphConverter(DataConverter):
             for _, neigbour in enumerate(atom.GetNeighbors()):
                 neighbour_idx: int = neigbour.GetIdx()
                 bond: str = self.molecule.GetBondBetweenAtoms(atom_idx, neighbour_idx)
-                bond_type: str = self.bond_mapping[bond.GetBondType().name]
+                bond_type_idx = self.bond_mapping[bond.GetBondType().name]
                 adjacency[
-                    bond_type, [atom_idx, neighbour_idx], [neighbour_idx, atom_idx]
+                    bond_type_idx, [atom_idx, neighbour_idx], [neighbour_idx, atom_idx]
                 ] = 1
+        
+        # Where no bond, add 1 to last channel (indicating "non-bond")
+        # Notice: channels-first
+        
+        adjacency[-1, np.sum(adjacency, axis=0) == 0] = 1
+        
+        # Where no atom, add 1 to last column (indicating "non-atom")
+        features[np.where(np.sum(features, axis=1) == 0)[0], -1] = 1
 
         return adjacency, features
 
@@ -116,32 +137,32 @@ class SmilesConverter(DataConverter):
 
         # remove 'no atoms' and atoms with no bonds
         keep_idx = np.where(
-            (np.argmax(features, axis=1) != Descriptors.BOND_DIM - 1)
+            (np.argmax(features, axis=1) != Descriptors.ATOM_DIM.value - 1)
             & (np.sum(adjacency[:-1], axis=(0, 1)) != 0)
         )[0]
         features = features[keep_idx]
         adjacency = adjacency[:, keep_idx, :][:, :, keep_idx]
 
         # add atoms to molecule
-        for _, atom_type_idx in enumerate(np.argmax(features, axis=1)):
-            atom: str = Chem.Atom(self.atom_mapping[atom_type_idx])
-            molecule.AddAtom(atom)
+        for atom_type_idx in np.argmax(features, axis=1):
+            atom = Chem.Atom(self.atom_mapping[atom_type_idx])
+            _ = molecule.AddAtom(atom)
 
         # add bonds between atoms in molecule,
         # based on the upper triangles of the [symmetric] adjacency matrix
 
         (bonds_ij, atoms_i, atoms_j) = np.where(np.triu(adjacency) == 1)
         for (bond_ij, atom_i, atom_j) in zip(bonds_ij, atoms_i, atoms_j):
-            if atom_i == atom_j or bond_ij == 4:
+            if atom_i == atom_j or bond_ij == Descriptors.BOND_DIM.value - 1:
                 continue
             bond_type = self.bond_mapping[bond_ij]
             molecule.AddBond(int(atom_i), int(atom_j), bond_type)
 
         # Sanitize the molecule
-        flag = Chem.SanitizeMol(self.molecule, catchErrors=True)
+        flag = Chem.SanitizeMol(molecule, catchErrors=True)
 
         if flag != Chem.SanitizeFlags.SANITIZE_NONE:
-            return ""
+            return None
         return molecule
 
 

@@ -9,7 +9,9 @@ from typing import Dict, Final, List, Tuple, Any
 import tensorflow as tf
 import wandb
 from rdkit import Chem
+from rdkit.Chem.Draw import IPythonConsole, MolsToGridImage
 from tensorflow import keras
+from tensorflow.keras.callbacks import EarlyStopping
 from wandb.keras import WandbCallback, WandbModelCheckpoint
 
 from src.models.gans.converter import Descriptors, GraphConverter, SmilesConverter
@@ -78,7 +80,7 @@ def wandb_initialization() -> Dict[str, Any]:
             Descriptors.NUM_ATOMS.value, 
             Descriptors.ATOM_DIM.value
         ),
-        "epochs": 50,
+        "epochs": 10,
         "batch_size": 32,
         "latent_dim": 64,
         "gconv_units": [128, 128, 128, 128],
@@ -92,18 +94,19 @@ def wandb_initialization() -> Dict[str, Any]:
 def sample(model: keras.Model, batch_size: int = 32) -> List:
     LATENT_DIM: Final[int] = 64
     latent_space = tf.random.normal((batch_size, LATENT_DIM))
-    graph = model.predict(latent_space)
+    graph = model(latent_space)
     # obtain one-hot encoded adjacency tensor
     adjacency = tf.argmax(graph[0], axis=1)
-    adjacency = tf.one_hot(adjacency, depth=Descriptor.BOND_DIM, axis=1)
+    adjacency = tf.one_hot(adjacency, depth=Descriptors.BOND_DIM.value, axis=1)
     # Remove potential self-loops from adjacency
     adjacency = tf.linalg.set_diag(adjacency, tf.zeros(tf.shape(adjacency)[:-1]))
     # obtain one-hot encoded feature tensor
     features = tf.argmax(graph[1], axis=2)
-    features = tf.one_hot(features, depth=Descriptors.ATOM_DIM, axis=2)
-    
+    features = tf.one_hot(features, depth=Descriptors.ATOM_DIM.value, axis=2)
+        
     return [
-        [SmilesConverter(i).transform()] for i in range(batch_size)
+        SmilesConverter([adjacency[i].numpy(), features[i].numpy()]).transform() \
+            for i in range(batch_size)
     ]
 
 
@@ -132,7 +135,7 @@ if __name__ == '__main__':
         adjacency_tensors = []
         features_tensors = []
         
-        for molecule in molecules[:2000]:
+        for molecule in molecules:
             smiles = None
             try:
                 smiles = Chem.MolFromSmiles(molecule)
@@ -206,7 +209,7 @@ if __name__ == '__main__':
         features_tensors = []
         qed_tensors = []
         
-        for i, molecule in enumerate(data["smiles"][500:3000]):
+        for i, molecule in enumerate(data["smiles"]]):
             smiles = None
             try:
                 smiles = Chem.MolFromSmiles(molecule)
@@ -248,7 +251,7 @@ if __name__ == '__main__':
         
         gvae = GraphVAE(encoder=encoder, decoder=decoder, latent_dim=config["latent_dim"])
         gvae.compile(optimizer)
-        
+                
         history = gvae.fit(
             [adjacency_tensors, features_tensors, qed_tensors], 
             epochs=config["epochs"],
@@ -274,4 +277,18 @@ if __name__ == '__main__':
         path_to_save_model = os.path.join(os.getcwd(), f"models/gans/{args.name}")
         wgan = tf.saved_model.load(path_to_save_model)
         
-        molecules = sample(wgan.generator)
+        model = wgan.generator
+        
+        molecules = sample(model)
+        
+        smiles = [Chem.MolToSmiles(mol.GetMol()) for mol in molecules if mol]
+        
+        imgs = MolsToGridImage(
+                    [mol for mol in molecules if mol], molsPerRow=5, subImgSize=(150, 150), returnPNG=False
+                )
+        
+        imgs.save(os.path.join(os.getcwd(), f"results\gans\images\{current_time}.png"))
+        
+        with open(os.path.join(os.getcwd(), f"results\gans\smiles\{current_time}.txt"), "w") as f:
+            for s in smiles:
+                f.write(f"{s}\n")

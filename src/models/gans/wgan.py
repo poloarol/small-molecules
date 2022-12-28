@@ -22,7 +22,7 @@ class GraphWGAN(keras.Model):
         discriminator_steps: int = 1,
         generator_steps: int = 1,
         gp_weight: float = 10.0,
-        latent_dim: int = 64,
+        # latent_dim: int = 64,
     ) -> None:
         super().__init__()
         self.discriminator: keras.Model = discriminator_model
@@ -30,7 +30,7 @@ class GraphWGAN(keras.Model):
         self.discriminator_steps: int = discriminator_steps
         self.generator_steps: int = generator_steps
         self.gp_weight: float = gp_weight
-        self.latent_dim: Final[int] = latent_dim
+        self.latent_dim: Final[int] = self.generator.input_shape[-1]
 
     def compile(self, generator_opt: float, discriminator_opt: float, **kwargs):
         """Compile the model"""
