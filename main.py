@@ -9,9 +9,8 @@ from typing import Dict, Final, List, Tuple, Any
 import tensorflow as tf
 import wandb
 from rdkit import Chem
-from rdkit.Chem.Draw import IPythonConsole, MolsToGridImage
+from rdkit.Chem.Draw import MolsToGridImage
 from tensorflow import keras
-from tensorflow.keras.callbacks import EarlyStopping
 from wandb.keras import WandbCallback, WandbModelCheckpoint
 
 from src.models.gans.converter import Descriptors, GraphConverter, SmilesConverter
@@ -99,9 +98,9 @@ def wandb_initialization() -> Dict[str, Any]:
     
     return config
 
-def sample(model: keras.Model, batch_size: int = 32) -> List:
-    LATENT_DIM: Final[int] = 64
-    latent_space = tf.random.normal((batch_size, LATENT_DIM))
+def sample(model: keras.Model, batch_size: int = 32, latent_dim: int = 64) -> List:
+    # LATENT_DIM: Final[int] = 64
+    latent_space = tf.random.normal((batch_size, latent_dim))
     graph = model(latent_space)
     # obtain one-hot encoded adjacency tensor
     adjacency = tf.argmax(graph[0], axis=1)
@@ -143,7 +142,7 @@ if __name__ == '__main__':
         adjacency_tensors = []
         features_tensors = []
         
-        for molecule in molecules:
+        for _, molecule in enumerate(molecules):
             smiles = None
             try:
                 smiles = Chem.MolFromSmiles(molecule)
@@ -212,12 +211,12 @@ if __name__ == '__main__':
     elif args.gvae:
         
         data = load_zinc("data/zinc.csv")
-        
+                
         adjacency_tensors = []
         features_tensors = []
         qed_tensors = []
         
-        for i, molecule in enumerate(data["smiles"][:2000]):
+        for i, molecule in enumerate(data["smiles"][:5000]):
             smiles = None
             try:
                 smiles = Chem.MolFromSmiles(molecule)
@@ -233,13 +232,14 @@ if __name__ == '__main__':
             features_tensors.append(features)
             qed_tensors.append(data["qed"][i])
         
-        # wandb.init(project="VAE-small-molecule-generation", name=f"experiment-2500-{current_time}")
-        # wandb.config = wandb_initialization()
-        config = wandb_initialization()
+        wandb.init(project="VAE-small-molecule-generation", name=f"experiment-2500-{current_time}")
+        wandb.config = wandb_initialization()
+        config = wandb.config
         
         adjacency_tensors = tf.convert_to_tensor(adjacency_tensors, dtype="float32")
         features_tensors = tf.convert_to_tensor(features_tensors, dtype="float32")
         qed_tensors = tf.convert_to_tensor(qed_tensors, dtype="float32")
+        print(adjacency_tensors.shape, features_tensors.shape, qed_tensors.shape)
                 
         optimizer = config["generator_opt"]
         encoder = build_graph_encoder(gconv_units=[9],
@@ -252,12 +252,13 @@ if __name__ == '__main__':
                                           DescriptorsVAE.NUM_ATOMS.value,
                                           DescriptorsVAE.ATOM_DIM.value
                                         ),
-                                      latent_dim=435, #config["latent_dim"],
-                                      dense_units=[512],
-                                      dropout_rate=config["dropout"])
+                                      latent_dim=config["latent_dim"],
+                                      dense_units=config["generator_dense_units"],
+                                      dropout_rate=0.0 #config["dropout"]
+                                    )
         decoder = build_graph_decoder(dense_units=config["generator_dense_units"],
                                       droupout_rate=config["dropout"],
-                                      latent_dim=435, #config["latent_dim"],
+                                      latent_dim=config["latent_dim"],
                                       adjacency_shape=(
                                           DescriptorsVAE.BOND_DIM.value,
                                           DescriptorsVAE.NUM_ATOMS.value,
@@ -279,7 +280,7 @@ if __name__ == '__main__':
             epochs=config["epochs"],
             shuffle=True,
             callbacks=[
-                # WandbCallback()
+                WandbCallback()
                 ],
             use_multiprocessing=True
             )
@@ -293,7 +294,12 @@ if __name__ == '__main__':
         path_to_save_model = os.path.join(os.getcwd(), f"models/vaes/{args.name}")
         gvae = tf.saved_model.load(path_to_save_model)
         
-        molecules = sample(gvae.decoder)
+        molecules = gvae.inference(batch_size = 1000) # Not working
+        
+        # molecules = sample(gvae.decoder)
+        
+        # smiles = [Chem.MolToSmiles(mol.GetMol()) for mol in molecules if mol]
+        # print(smiles)
         
     elif args.sample_wgan:
         path_to_save_model = os.path.join(os.getcwd(), f"models/gans/{args.name}")

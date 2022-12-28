@@ -23,14 +23,15 @@ class GraphVAE(keras.Model):
         self.reconstruction_loss_tracker = keras.metrics.Mean(name="reconstruction_loss")
         self.kl_loss_tracker = keras.metrics.Mean(name="kl_loss")
     
-    def _compute_loss(self, z_mean,
+    def _compute_loss(self,
+                      z_mean,
                       z_log_var,
                       qed_true,
                       qed_predicted,
                       real_graph,
                       predicted_graph) -> float:
         
-        adjacency_real, features_pred = real_graph
+        adjacency_real, features_real = real_graph
         adjacency_generated, features_generated = predicted_graph
         
         adjacency_loss = tf.reduce_mean(
@@ -41,7 +42,7 @@ class GraphVAE(keras.Model):
             )
         feature_loss = tf.reduce_mean(
             tf.reduce_sum(
-                keras.losses.categorical_crossentropy(features_pred, features_generated),
+                keras.losses.categorical_crossentropy(features_real, features_generated),
                 axis=(1),
             )
         )
@@ -89,12 +90,12 @@ class GraphVAE(keras.Model):
         grads_adjacency_penalty = (1 - tf.norm(grads[0], axis=1)) ** 2
         grads_features_penalty = (1 - tf.norm(grads[1], axis=2)) ** 2
         
-        reconstruction_loss = tf.reduce_mean(
+        return tf.reduce_mean(
             tf.reduce_mean(grads_adjacency_penalty, axis=(-2, -1))
             + tf.reduce_mean(grads_features_penalty, axis=(-1))
         )
-        self.reconstruction_loss_tracker.update_state(reconstruction_loss)
-        return reconstruction_loss
+        # self.reconstruction_loss_tracker.update_state(reconstruction_loss)
+        # return reconstruction_loss
     
     def call(self, inputs):
         z_mean, log_var = self.encoder(inputs)
@@ -112,7 +113,7 @@ class GraphVAE(keras.Model):
         adjacency = tf.argmax(reconstruction_adjacency, axis=1)
         adjacency = tf.one_hot(adjacency, depth=DescriptorsVAE.BOND_DIM.value, axis=1)
         # Remove potential self-loops from adjacency
-        adjacency = tf.linalg.set_diag(adjacency, tf.zeros(tf.shape(adjacency)[::-1]))
+        adjacency = tf.linalg.set_diag(adjacency, tf.zeros(tf.shape(adjacency)[:-1]))
         # Obtain one-hot encoded tensor
         features = tf.argmax(reconstruction_features, axis=2)
         features = tf.one_hot(features, depth=DescriptorsVAE.ATOM_DIM.value, axis=2)
@@ -131,7 +132,7 @@ class GraphVAE(keras.Model):
                 self(graph_real, training=True)
             graph_generated = [generator_adjacency, generator_feature]
             total_loss = self._compute_loss(
-                z_log_var=z_log_var, z_mean=z_mean, qed_true=qed_tensor,
+                z_mean=z_mean, z_log_var=z_log_var, qed_true=qed_tensor,
                 qed_predicted=qed_pred, real_graph=graph_real, predicted_graph=graph_generated
             )
             
@@ -141,28 +142,8 @@ class GraphVAE(keras.Model):
             )
         self.total_loss_tracker.update_state(total_loss)
         
-        self.test_step(datum)
-        # self.val_total_loss_tracker.update_state(val_loss)
         return {
             "total-loss": self.total_loss_tracker.result(), 
             "kl-loss": self.kl_loss_tracker.result(),
-            "reconstruction-loss": self.reconstruction_loss_tracker.result(),
+            # "reconstruction-loss": self.reconstruction_loss_tracker.result(),
             }
-            
-    def test_step(self, datum):
-        adjacency_tensor, feature_tensor, qed_tensor = datum[0]
-        graph_real = [adjacency_tensor, feature_tensor]
-        
-        z_mean, z_log_var, property_prediction, \
-        reconstruction_adjacency, reconstruction_features =\
-            self(graph_real, training=False)
-            
-        graph_generated = [reconstruction_adjacency, reconstruction_features]
-        
-        val_loss = self._compute_loss(
-                z_log_var=z_log_var, z_mean=z_mean, qed_true=qed_tensor,
-                qed_predicted=property_prediction, real_graph=graph_real,
-                predicted_graph=graph_generated
-            )
-
-        self.reconstruction_loss_tracker.update_state(val_loss)

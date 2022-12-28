@@ -1,5 +1,7 @@
 """ converter.py """
 
+
+import ast
 from abc import ABC, abstractmethod
 from enum import Enum
 from typing import Dict, Final, Tuple
@@ -11,19 +13,7 @@ from rdkit import Chem
 class DescriptorsVAE(Enum):
     """Provide constantsa and molecular descriptors"""
 
-    SMILE_CHARSET: Final[str] = [
-        "C",
-        "B",
-        "F",
-        "I",
-        "H",
-        "O",
-        "N",
-        "S",
-        "P",
-        "Cl",
-        "Br",
-    ]
+    SMILE_CHARSET: Final = ["C", "B", "F", "I", "H", "O", "N", "S", "P", "Cl", "Br"]
     NUM_ATOMS: Final[int] = 120
     BOND_DIM: Final[int] = 5
     ATOM_DIM: Final[int] = len(SMILE_CHARSET)
@@ -47,15 +37,20 @@ class DataConverter(ABC):
 
     def __get_atom_mapping(self) -> Dict[int, str]:
         """map atoms to indices"""
+        
+        CHAR_SET = DescriptorsVAE.SMILE_CHARSET.value
+        
         smile_to_idx: Dict[str, int] = {
-            char: idx for idx, char in enumerate(DescriptorsVAE.SMILE_CHARSET.value)
+            char: idx for idx, char in enumerate(CHAR_SET)
         }
         idx_to_simle: Dict[int, str] = {
-            idx: char for idx, char in enumerate(DescriptorsVAE.SMILE_CHARSET.value)
+            idx: char for idx, char in enumerate(CHAR_SET)
         }
-
-        smile_to_idx.update(idx_to_simle)
-        return smile_to_idx
+        
+        atom_mapping: Dict = dict(smile_to_idx)
+        atom_mapping.update(idx_to_simle)
+        
+        return atom_mapping
 
     def __get_bond_mapping(self) -> int:
         """provides bond mapping"""
@@ -96,13 +91,13 @@ class GraphConverterVAE(DataConverter):
             for _, neigbour in enumerate(atom.GetNeighbors()):
                 neighbour_idx: int = neigbour.GetIdx()
                 bond: str = self.molecule.GetBondBetweenAtoms(atom_idx, neighbour_idx)
-                bond_type: str = self.bond_mapping[bond.GetBondType().name]
+                bond_type_idx = self.bond_mapping[bond.GetBondType().name]
                 adjacency[
-                    bond_type, [atom_idx, neighbour_idx], [neighbour_idx, atom_idx]
+                    bond_type_idx, [atom_idx, neighbour_idx], [neighbour_idx, atom_idx]
                 ] = 1
         
-        adjacency[-1, np.sum(adjacency, axis=0) == 0] = 1
-        features[np.where(np.sum(features, axis=1) == 0)[0], -1] = 1
+        adjacency[-1, np.sum(adjacency, axis = 0) == 0] = 1
+        features[np.where(np.sum(features, axis = 1) == 0)[0], -1] = 1
 
         return adjacency, features
 
@@ -126,9 +121,9 @@ class SmilesConverterVAE(DataConverter):
         adjacency = adjacency[:, keep_idx, :][:, :, keep_idx]
 
         # add atoms to molecule
-        for _, atom_type_idx in enumerate(np.argmax(features, axis=1)):
+        for atom_type_idx in np.argmax(features, axis=1):
             atom: str = Chem.Atom(self.atom_mapping[atom_type_idx])
-            molecule.AddAtom(atom)
+            _ = molecule.AddAtom(atom)
 
         # add bonds between atoms in molecule,
         # based on the upper triangles of the [symmetric] adjacency matrix
@@ -141,7 +136,7 @@ class SmilesConverterVAE(DataConverter):
             molecule.AddBond(int(atom_i), int(atom_j), bond_type)
 
         # Sanitize the molecule
-        flag = Chem.SanitizeMol(self.molecule, catchErrors=True)
+        flag = Chem.SanitizeMol(molecule, catchErrors=True)
 
         if flag != Chem.SanitizeFlags.SANITIZE_NONE:
             return None

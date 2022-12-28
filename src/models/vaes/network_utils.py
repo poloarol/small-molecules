@@ -14,7 +14,7 @@ class Sampling(layers.Layer):
         dim = tf.shape(z_log_var)[1]
         epsilon = keras.backend.random_normal(shape=(batch, dim))
         
-        return z_mean + tf.math.exp(0.5 * z_log_var) + epsilon
+        return z_mean + tf.math.exp(0.5 * z_log_var) * epsilon
 
 class RelationalConvGraphLayer(layers.Layer):
     """
