@@ -15,6 +15,7 @@ from tensorflow.keras.callbacks import EarlyStopping
 from wandb.keras import WandbCallback, WandbModelCheckpoint
 
 from src.models.gans.converter import Descriptors, GraphConverter, SmilesConverter
+from src.models.vaes.converter import DescriptorsVAE, GraphConverterVAE, SmilesConverterVAE
 from src.models.gans.network_utils import (build_graph_discriminator,
                                            build_graph_generator)
 from src.models.gans.wgan import GraphWGAN
@@ -61,6 +62,13 @@ def load_zinc(path: str) -> Dict[str, list]:
 
 def smiles_to_graph(smiles: str) -> Tuple:
     graph_converter = GraphConverter(smiles)
+    adjacency, features = graph_converter.transform()
+    
+    return adjacency, features
+
+
+def smiles_to_graph_vae(smiles: str) -> Tuple:
+    graph_converter = GraphConverterVAE(smiles)
     adjacency, features = graph_converter.transform()
     
     return adjacency, features
@@ -209,7 +217,7 @@ if __name__ == '__main__':
         features_tensors = []
         qed_tensors = []
         
-        for i, molecule in enumerate(data["smiles"]]):
+        for i, molecule in enumerate(data["smiles"][:2000]):
             smiles = None
             try:
                 smiles = Chem.MolFromSmiles(molecule)
@@ -220,14 +228,14 @@ if __name__ == '__main__':
             else:
                 pass
 
-            adjacency, features = smiles_to_graph(smiles)
+            adjacency, features = smiles_to_graph_vae(smiles)
             adjacency_tensors.append(adjacency)
             features_tensors.append(features)
             qed_tensors.append(data["qed"][i])
         
-        wandb.init(project="VAE-small-molecule-generation", name=f"experiment-2500-{current_time}")
-        wandb.config = wandb_initialization()
-        config = wandb.config
+        # wandb.init(project="VAE-small-molecule-generation", name=f"experiment-2500-{current_time}")
+        # wandb.config = wandb_initialization()
+        config = wandb_initialization()
         
         adjacency_tensors = tf.convert_to_tensor(adjacency_tensors, dtype="float32")
         features_tensors = tf.convert_to_tensor(features_tensors, dtype="float32")
@@ -235,16 +243,30 @@ if __name__ == '__main__':
                 
         optimizer = config["generator_opt"]
         encoder = build_graph_encoder(gconv_units=[9],
-                                      adjacency_shape=config["adjacency_shape"],
-                                      features_shape=config["feature_shape"],
-                                      latent_dim=config["latent_dim"],
+                                      adjacency_shape=(
+                                          DescriptorsVAE.BOND_DIM.value,
+                                          DescriptorsVAE.NUM_ATOMS.value,
+                                          DescriptorsVAE.NUM_ATOMS.value
+                                        ),
+                                      features_shape=(
+                                          DescriptorsVAE.NUM_ATOMS.value,
+                                          DescriptorsVAE.ATOM_DIM.value
+                                        ),
+                                      latent_dim=435, #config["latent_dim"],
                                       dense_units=[512],
                                       dropout_rate=config["dropout"])
         decoder = build_graph_decoder(dense_units=config["generator_dense_units"],
                                       droupout_rate=config["dropout"],
-                                      latent_dim=config["latent_dim"],
-                                      adjacency_shape=config["adjacency_shape"],
-                                      feature_shape=config["feature_shape"]
+                                      latent_dim=435, #config["latent_dim"],
+                                      adjacency_shape=(
+                                          DescriptorsVAE.BOND_DIM.value,
+                                          DescriptorsVAE.NUM_ATOMS.value,
+                                          DescriptorsVAE.NUM_ATOMS.value
+                                        ),
+                                      feature_shape=(
+                                          DescriptorsVAE.NUM_ATOMS.value,
+                                          DescriptorsVAE.ATOM_DIM.value
+                                        )
                                     )
         
         
@@ -257,7 +279,7 @@ if __name__ == '__main__':
             epochs=config["epochs"],
             shuffle=True,
             callbacks=[
-                WandbCallback()
+                # WandbCallback()
                 ],
             use_multiprocessing=True
             )
@@ -265,7 +287,7 @@ if __name__ == '__main__':
         os.makedirs(path_to_save_model, exist_ok=True)
         tf.saved_model.save(gvae, path_to_save_model)
         
-        wandb.finish()
+        # wandb.finish()
     
     elif args.sample_gvae:
         path_to_save_model = os.path.join(os.getcwd(), f"models/vaes/{args.name}")

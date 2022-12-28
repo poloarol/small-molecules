@@ -8,7 +8,7 @@ import numpy as np
 from rdkit import Chem
 
 
-class Descriptors(Enum):
+class DescriptorsVAE(Enum):
     """Provide constantsa and molecular descriptors"""
 
     SMILE_CHARSET: Final[str] = [
@@ -48,10 +48,10 @@ class DataConverter(ABC):
     def __get_atom_mapping(self) -> Dict[int, str]:
         """map atoms to indices"""
         smile_to_idx: Dict[str, int] = {
-            char: idx for idx, char in enumerate(Descriptors.SMILE_CHARSET.value)
+            char: idx for idx, char in enumerate(DescriptorsVAE.SMILE_CHARSET.value)
         }
         idx_to_simle: Dict[int, str] = {
-            idx: char for idx, char in enumerate(Descriptors.SMILE_CHARSET.value)
+            idx: char for idx, char in enumerate(DescriptorsVAE.SMILE_CHARSET.value)
         }
 
         smile_to_idx.update(idx_to_simle)
@@ -71,7 +71,7 @@ class DataConverter(ABC):
         }
 
 
-class GraphConverter(DataConverter):
+class GraphConverterVAE(DataConverter):
     """
     Utility class to convert smiles to graphs
     """
@@ -79,18 +79,18 @@ class GraphConverter(DataConverter):
     def transform(self) -> Tuple:
         """build an adjacency and feature matrix of the molecule"""
         adjacency: np.array = np.zeros(
-            (Descriptors.BOND_DIM.value, Descriptors.NUM_ATOMS.value, Descriptors.NUM_ATOMS.value),
+            (DescriptorsVAE.BOND_DIM.value, DescriptorsVAE.NUM_ATOMS.value, DescriptorsVAE.NUM_ATOMS.value),
             "float32",
         )
         features: np.array = np.zeros(
-            (Descriptors.NUM_ATOMS.value, Descriptors.ATOM_DIM.value), "float32"
+            (DescriptorsVAE.NUM_ATOMS.value, DescriptorsVAE.ATOM_DIM.value), "float32"
         )
 
         # loop over each atom in the molecule
         for _, atom in enumerate(self.molecule.GetAtoms()):
             atom_idx: int = atom.GetIdx()
             atom_type: str = self.atom_mapping[atom.GetSymbol()]
-            features[atom_idx] = np.eye(Descriptors.ATOM_DIM.value)[atom_type]
+            features[atom_idx] = np.eye(DescriptorsVAE.ATOM_DIM.value)[atom_type]
 
             # loop over neighbours
             for _, neigbour in enumerate(atom.GetNeighbors()):
@@ -100,11 +100,14 @@ class GraphConverter(DataConverter):
                 adjacency[
                     bond_type, [atom_idx, neighbour_idx], [neighbour_idx, atom_idx]
                 ] = 1
+        
+        adjacency[-1, np.sum(adjacency, axis=0) == 0] = 1
+        features[np.where(np.sum(features, axis=1) == 0)[0], -1] = 1
 
         return adjacency, features
 
 
-class SmilesConverter(DataConverter):
+class SmilesConverterVAE(DataConverter):
     """
     Utility class to convert graphs to smiles
     """
@@ -116,7 +119,7 @@ class SmilesConverter(DataConverter):
 
         # remove 'no atoms' and atoms with no bonds
         keep_idx = np.where(
-            (np.argmax(features, axis=1) != Descriptors.BOND_DIM - 1)
+            (np.argmax(features, axis=1) != DescriptorsVAE.ATOM_DIM.value - 1)
             & (np.sum(adjacency[:-1], axis=(0, 1)) != 0)
         )[0]
         features = features[keep_idx]
@@ -132,7 +135,7 @@ class SmilesConverter(DataConverter):
 
         (bonds_ij, atoms_i, atoms_j) = np.where(np.triu(adjacency) == 1)
         for (bond_ij, atom_i, atom_j) in zip(bonds_ij, atoms_i, atoms_j):
-            if atom_i == atom_j or bond_ij == 4:
+            if atom_i == atom_j or bond_ij == DescriptorsVAE.BOND_DIM.value - 1:
                 continue
             bond_type = self.bond_mapping[bond_ij]
             molecule.AddBond(int(atom_i), int(atom_j), bond_type)
@@ -141,7 +144,7 @@ class SmilesConverter(DataConverter):
         flag = Chem.SanitizeMol(self.molecule, catchErrors=True)
 
         if flag != Chem.SanitizeFlags.SANITIZE_NONE:
-            return ""
+            return None
         return molecule
 
 

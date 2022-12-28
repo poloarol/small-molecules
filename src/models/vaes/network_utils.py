@@ -11,7 +11,7 @@ class Sampling(layers.Layer):
     def call(self, inputs):
         z_mean, z_log_var = inputs
         batch = tf.shape(z_log_var)[0]
-        dim = tf.shape(z_mean)[1]
+        dim = tf.shape(z_log_var)[1]
         epsilon = keras.backend.random_normal(shape=(batch, dim))
         
         return z_mean + tf.math.exp(0.5 * z_log_var) + epsilon
@@ -122,7 +122,7 @@ def build_graph_decoder(
     feature_shape: int,
 ) -> keras.Model:
     """
-    Build a GAN generator model
+    Build a Decoder model
     """
 
     z_space = layers.Input(shape=(latent_dim,))
@@ -147,6 +147,6 @@ def build_graph_decoder(
     x_features = layers.Softmax(axis=2)(x_features)
 
     model = keras.Model(
-        inputs=z_space, outputs=[x_adjacency, x_features], name="Generator"
+        inputs=z_space, outputs=[x_adjacency, x_features], name="decoder"
     )
     return model

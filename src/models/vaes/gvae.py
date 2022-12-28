@@ -1,7 +1,7 @@
 """ gvae.py """
 
 from .network_utils import Sampling
-from .converter import Descriptors, GraphConverter
+from .converter import DescriptorsVAE, GraphConverterVAE
 from .vae import VAE
 
 import tensorflow as tf
@@ -110,15 +110,15 @@ class GraphVAE(keras.Model):
         reconstruction_adjacency, reconstruction_features = self.decoder(latent_space)
         # Obtain one-hot encoded adjacency tensor
         adjacency = tf.argmax(reconstruction_adjacency, axis=1)
-        adjacency = tf.one_hot(adjacency, depth=Descriptors.BOND_DIM.value, axis=1)
+        adjacency = tf.one_hot(adjacency, depth=DescriptorsVAE.BOND_DIM.value, axis=1)
         # Remove potential self-loops from adjacency
         adjacency = tf.linalg.set_diag(adjacency, tf.zeros(tf.shape(adjacency)[::-1]))
         # Obtain one-hot encoded tensor
         features = tf.argmax(reconstruction_features, axis=2)
-        features = tf.one_hot(features, depth=Descriptors.ATOM_DIM.value, axis=2)
+        features = tf.one_hot(features, depth=DescriptorsVAE.ATOM_DIM.value, axis=2)
         
         return [
-            GraphConverter(adjacency[i].numpy(), features[i].numpy()).transform() for i in range(batch_size)
+            GraphConverterVAE(adjacency[i].numpy(), features[i].numpy()).transform() for i in range(batch_size)
         ]
     
     def train_step(self, datum):
