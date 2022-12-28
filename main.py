@@ -98,18 +98,25 @@ def wandb_initialization() -> Dict[str, Any]:
     
     return config
 
-def sample(model: keras.Model, batch_size: int = 32, latent_dim: int = 64) -> List:
+def sample(model: keras.Model, model_type: str, batch_size: int = 32, latent_dim: int = 64) -> List:
+    
     # LATENT_DIM: Final[int] = 64
+    descriptors = None
+    if model_type == "GVAE":
+        descriptors = Descriptors
+    else:
+        descriptors = DescriptorsVAE
+    
     latent_space = tf.random.normal((batch_size, latent_dim))
     graph = model(latent_space)
     # obtain one-hot encoded adjacency tensor
     adjacency = tf.argmax(graph[0], axis=1)
-    adjacency = tf.one_hot(adjacency, depth=Descriptors.BOND_DIM.value, axis=1)
+    adjacency = tf.one_hot(adjacency, depth=descriptors.BOND_DIM.value, axis=1)
     # Remove potential self-loops from adjacency
     adjacency = tf.linalg.set_diag(adjacency, tf.zeros(tf.shape(adjacency)[:-1]))
     # obtain one-hot encoded feature tensor
     features = tf.argmax(graph[1], axis=2)
-    features = tf.one_hot(features, depth=Descriptors.ATOM_DIM.value, axis=2)
+    features = tf.one_hot(features, depth=descriptors.ATOM_DIM.value, axis=2)
         
     return [
         SmilesConverter([adjacency[i].numpy(), features[i].numpy()]).transform() \
@@ -194,7 +201,7 @@ if __name__ == '__main__':
         history = wgan.fit(
             [adjacency_tensors, features_tensors], 
             epochs=config["epochs"],
-            batch_size=config["batch_size"],
+            batch_size=100,
             shuffle=True,
             callbacks=[
                 WandbCallback()
@@ -278,6 +285,7 @@ if __name__ == '__main__':
         history = gvae.fit(
             [adjacency_tensors, features_tensors, qed_tensors], 
             epochs=config["epochs"],
+            batch_size=100,
             shuffle=True,
             callbacks=[
                 WandbCallback()
@@ -294,20 +302,26 @@ if __name__ == '__main__':
         path_to_save_model = os.path.join(os.getcwd(), f"models/vaes/{args.name}")
         gvae = tf.saved_model.load(path_to_save_model)
         
-        molecules = gvae.inference(batch_size = 1000) # Not working
+        # molecules = gvae.inference(batch_size = 1000) # Not working
+        molecules = sample(gvae.decoder, model_type="GVAE")
         
-        # molecules = sample(gvae.decoder)
+        smiles = [Chem.MolToSmiles(mol.GetMol()) for mol in molecules if mol]
         
-        # smiles = [Chem.MolToSmiles(mol.GetMol()) for mol in molecules if mol]
-        # print(smiles)
+        imgs = MolsToGridImage(
+                [mol for mol in molecules if mol], molsPerRow=5, subImgSize=(150, 150), returnPNG=False
+                )
+        
+        imgs.save(os.path.join(os.getcwd(), f"results\\vaes\images\{current_time}.png"))
+        
+        with open(os.path.join(os.getcwd(), f"results\\vaes\smiles\{current_time}.txt"), "w") as f:
+            for s in smiles:
+                f.write(f"{s}\n")
         
     elif args.sample_wgan:
         path_to_save_model = os.path.join(os.getcwd(), f"models/gans/{args.name}")
         wgan = tf.saved_model.load(path_to_save_model)
-        
-        model = wgan.generator
-        
-        molecules = sample(model)
+                
+        molecules = sample(wgan.descriminator, model_type="GWAN")
         
         smiles = [Chem.MolToSmiles(mol.GetMol()) for mol in molecules if mol]
         
