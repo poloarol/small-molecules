@@ -57,8 +57,10 @@ How to Use
     - WGAN-GP: python main.py --wgan --name `name of model`
     - gVAE: python main.py --gvae --name `name of model`
 2. Sample latent space:
-    - WGAN-GP: python main.py --sample_wgan --name `name of sample`
-    - gVAE: python main.py --sample_gvae --name `name of sample`
+    - WGAN-GP: python main.py --sample_wgan --name `name of model`
+    - gVAE: python main.py --sample_gvae --name `name of model`
+3. Visualize GVAE latent space
+    - python main.py --latent --name `name of model`
 
 Objectives
 ----------
