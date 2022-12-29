@@ -7,12 +7,15 @@ import os
 import logging
 from typing import Dict, Final, List, Tuple, Any
 
+import deepchem as dc
 import matplotlib.pyplot as plt
 import tensorflow as tf
+import torch
 import wandb
 from rdkit import Chem
 from rdkit.Chem.Draw import MolsToGridImage
 from tensorflow import keras
+from torch_geometric.data import DataLoader
 from wandb.keras import WandbCallback, WandbModelCheckpoint
 
 from src.models.gans.converter import Descriptors, GraphConverter, SmilesConverter
@@ -23,6 +26,9 @@ from src.models.gans.wgan import GraphWGAN
 from src.models.vaes.gvae import GraphVAE
 from src.models.vaes.network_utils import (build_graph_decoder,
                                            build_graph_encoder)
+
+from src.models.regression.graph_models import GAT, GCN, Trainer
+from src.models.regression.custom_dataset import MoleculeDataset
 
 
 logging.basicConfig(
@@ -145,6 +151,7 @@ if __name__ == '__main__':
     parser.add_argument("--sample_wgan", help="sample WGAN", action="store_true")
     parser.add_argument("--sample_gvae", help="sample VAE", action="store_true")
     parser.add_argument("--latent", help="Visualize the GVAE latent space", action="store_true")
+    parser.add_argument("--solubility", help="train solubility regression model", action="store_true")
     
     args = parser.parse_args()
     
@@ -420,3 +427,45 @@ if __name__ == '__main__':
         plt.xlabel("z[0]")
         plt.ylabel("z[1]")
         plt.show()
+    
+    elif args.solubility:
+        device = torch.device("cudo:0" if torch.cuda.is_available() else "cpu")
+        print("Device: ", device)
+        
+        batch_size: int = 64
+        
+        train_dataset = MoleculeDataset(root="Dataset/", filename="solubility-dataset-train.csv")
+        test_dataset = MoleculeDataset(root="Dataset/", filename="solubility-dataset-test.csv")
+        
+        train_loader = DataLoader(train_dataset, batch_size=batch_size)
+        test_loader = DataLoader(test_dataset, batch_size=batch_size)
+        
+        print(train_loader.dataset.length, test_loader.dataset.length)
+        
+        params: Dict = {
+            "hidden_channels": 128,
+            "dropout": 0.4,
+            "lr": 0.01,
+            "weight_decay": 7e-5,
+            "n_epochs": 30
+        }
+        
+        model = GCN(
+            n_features=30,
+            hidden_channels=params["hidden_channels"],
+            dropout=params["dropout"]
+        )
+        model.to(device)
+        
+        optimizer = torch.optim.Adam(
+            model.parameters(),
+            lr=params["lr"],
+            weight_decay=params["weight_decay"]
+        )
+        
+        trainer = Trainer(
+            model=model,
+            optimizer=optimizer,
+            train_loader=train_loader,
+            valid_loader=test_loader
+        )

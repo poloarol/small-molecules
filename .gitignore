@@ -8,7 +8,7 @@ __pycache__/
 *.so
 *~
 env/
-models/
+model/
 wandb/
 
 # due to using tox and pytest
