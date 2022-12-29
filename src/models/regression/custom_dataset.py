@@ -17,17 +17,21 @@ using aqueous solubility dataset from: https://doi.org/10.1038/s41597-019-0151-1
 """
 
 class MoleculeDataset(Dataset):
-    def __init__(self,
-                 root: str,
-                 filename: str,
-                 test: bool = False,
-                 transform: Any = None,
-                 pre_transform: Any = None,
-                 length: int = 0):
-        super(MoleculeDataset, self).__init__(root, transform, pre_transform)
+    def __init__(self, root: str, filename: str, test: bool = False, transform: Any = None, pre_transform: Any = None, length: int = 0):
         self.test = test
         self.filename = filename
         self.length = length
+        super(MoleculeDataset, self).__init__(root, transform, pre_transform)
+    
+    @property
+    def raw_file_names(self):
+        """
+        root = where the dataset should be stored. 
+        This folder is split into raw_dir (downloaded data) and 
+        processed_dir (processed data).
+        """
+        
+        return self.filename
     
     @property
     def processed_file_names(self):
@@ -35,18 +39,18 @@ class MoleculeDataset(Dataset):
         If these files are founf in raw_dir, processing is skipped
         """
         
-        processed_files = [file for file in os.listdir(self.processed_dir)\
-            if not file.endswith("pre")]
+        processed_files = [file for file in os.listdir(self.processed_dir) if not file.endswith("pre")]
         
         if self.test:
             processed_files = [file for file in processed_files if "test" in file]
-            if not processed_files:
+            if len(processed_files) == 0:
                 return ["no_files.dummy"]
-            self.length = len(processed_files)
-            return [f"data_{i}.pt" for i in list(range(self.length))]
+            length = len(processed_files)
+            self.length = length
+            return [f"data_test_{i}.pt" for i in list(range(length))]
         else:
             processed_files = [file for file in processed_files if not "test" in file]
-            if not processed_files:
+            if len(processed_files) == 0:
                 return ["no_files.dummy"]
             self.length = len(processed_files)
             return [f"data_{i}.pt" for i in list(range(self.length))]
@@ -55,15 +59,17 @@ class MoleculeDataset(Dataset):
         """
         Implement if needed to trigger raw file download from the web.
         """
+        pass
     
     def process(self):
         self.data = pd.read_csv(self.raw_paths[0]).reset_index()
         featurizer = dc.feat.MolGraphConvFeaturizer(use_edges=True)
         count: int = 0
+
         for idx, mol in tqdm(self.data.iterrows(), total=self.data.shape[0]):
             try:
-                feat = featurizer.featurize(mol["SMILES"])
-                data = feat[0].to_pyg_graph()
+                fz = featurizer.featurize(mol["SMILES"])
+                data = fz[0].to_pyg_graph()
                 count = count + 1
             except:
                 continue
@@ -88,9 +94,9 @@ class MoleculeDataset(Dataset):
         Returns the label (0/1) for the model: data.y
         """
         label = np.asarray([label])
-        return torch.Tensor(label, dtype=torch.int64)
+        return torch.tensor(label, dtype=torch.int64)
     
-    def __len__(self):
+    def len(self):
         return self.length
     
     def get(self, index):

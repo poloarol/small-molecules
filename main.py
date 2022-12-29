@@ -434,8 +434,8 @@ if __name__ == '__main__':
         
         batch_size: int = 64
         
-        train_dataset = MoleculeDataset(root="Dataset/", filename="solubility-dataset-train.csv")
-        test_dataset = MoleculeDataset(root="Dataset/", filename="solubility-dataset-test.csv")
+        train_dataset = MoleculeDataset(root="data/", filename="solubility-dataset-train.csv")
+        test_dataset = MoleculeDataset(root="data/", filename="solubility-dataset-test.csv", test=True)
         
         train_loader = DataLoader(train_dataset, batch_size=batch_size)
         test_loader = DataLoader(test_dataset, batch_size=batch_size)
@@ -469,3 +469,6 @@ if __name__ == '__main__':
             train_loader=train_loader,
             valid_loader=test_loader
         )
+        
+        (train_losses, train_scores), (valid_losses, test_scores) \
+            = trainer.run(n_epochs=params["n_epochs"])

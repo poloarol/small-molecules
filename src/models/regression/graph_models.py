@@ -8,7 +8,7 @@ import torch.nn.functional as F
 from torch.nn import Linear
 from torch_geometric.nn import GCNConv, GATConv
 from torch_geometric.nn import global_mean_pool as gap
-from tqdm.notebook import tqdm
+from tqdm import tqdm
 
 from sklearn.metrics import roc_auc_score
 
