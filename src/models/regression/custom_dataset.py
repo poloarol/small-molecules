@@ -39,7 +39,7 @@ class MoleculeDataset(Dataset):
         If these files are founf in raw_dir, processing is skipped
         """
         
-        processed_files = [file for file in os.listdir(self.processed_dir) if not file.endswith("pre")]
+        processed_files = [file for file in os.listdir(self.processed_dir) if not file.startswith("pre")]
         
         if self.test:
             processed_files = [file for file in processed_files if "test" in file]
@@ -77,7 +77,7 @@ class MoleculeDataset(Dataset):
             data.y = self.get_label(mol["isSoluble"]) # binary classification label
             data.smiles = mol["SMILES"]
             
-            if self.text:
+            if self.test:
                 torch.save(data, 
                            os.path.join(self.processed_dir, f"data_test_{count-1}.pt")
                         )

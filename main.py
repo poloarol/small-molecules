@@ -7,6 +7,7 @@ import os
 import logging
 from typing import Dict, Final, List, Tuple, Any
 
+import pickle
 import deepchem as dc
 import matplotlib.pyplot as plt
 import tensorflow as tf
@@ -75,6 +76,10 @@ def load_zinc(path: str) -> Dict[str, list]:
             data["sas"].append(float(row[3]))
     
     return data
+
+# def load_csv(path: str) -> pd.DataFrame:
+#     df = pd.read_csv(path)
+#     return df
 
 def smiles_to_graph(smiles: str) -> Tuple:
     graph_converter = GraphConverter(smiles)
@@ -152,6 +157,7 @@ if __name__ == '__main__':
     parser.add_argument("--sample_gvae", help="sample VAE", action="store_true")
     parser.add_argument("--latent", help="Visualize the GVAE latent space", action="store_true")
     parser.add_argument("--solubility", help="train solubility regression model", action="store_true")
+    parser.add_argument("--prepare_solubility", help="prepare solubility dataset", action="store_true")
     
     args = parser.parse_args()
     
@@ -428,20 +434,43 @@ if __name__ == '__main__':
         plt.ylabel("z[1]")
         plt.show()
     
+    elif args.prepare_solubility:
+        
+        tasks: List[str] = ["Solubility"]
+        loader = dc.data.CSVLoader(
+            tasks=tasks,
+            feature_field="SMILES",
+            featurizer=dc.feat.MolGraphConvFeaturizer(use_edges=True)
+        )
+        dataset = loader.create_dataset("data/solubility-dataset-train.csv")
+        
+        splitter = dc.splits.ButinaSplitter()
+        train_dataset, valid_dataset, test_dataset =\
+            splitter.train_valid_test_split(dataset, frac_train=0.7, frac_valid=0.2, frac_test=0.1, seed=42)
+        
+        with open(file="data/processed/processed-solubility-dataset-train.pkl", mode="wb") as file:
+            pickle.dump(train_dataset, file=file)
+        with open(file="data/processed/processed-solubility-dataset-valid.pkl", mode="wb") as file:
+            pickle.dump(valid_dataset, file=file)
+        with open(file="data/processed/processed-solubility-dataset-test.pkl", mode="wb") as file:
+            pickle.dump(test_dataset, file=file)
+        
     elif args.solubility:
         device = torch.device("cudo:0" if torch.cuda.is_available() else "cpu")
         print("Device: ", device)
         
         batch_size: int = 64
-        
-        train_dataset = MoleculeDataset(root="data/", filename="solubility-dataset-train.csv")
-        test_dataset = MoleculeDataset(root="data/", filename="solubility-dataset-test.csv", test=True)
-        
+        with open(file="data/processed/processed-solubility-dataset-train.pkl", mode="rb") as file:
+            train_dataset = pickle.load(file=file)
+        with open(file="data/processed/processed-solubility-dataset-valid.pkl", mode="rb") as file:
+            valid_dataset = pickle.load(file=file)
+        with open(file="data/processed/processed-solubility-dataset-test.pkl", mode="rb") as file:
+            test_dataset = pickle.load(file=file)
+        print(len(train_dataset), len(valid_dataset), len(test_dataset))
         train_loader = DataLoader(train_dataset, batch_size=batch_size)
         test_loader = DataLoader(test_dataset, batch_size=batch_size)
-        
-        print(train_loader.dataset.length, test_loader.dataset.length)
-        
+        valid_loader = DataLoader(valid_dataset, batch_size=batch_size)
+                
         params: Dict = {
             "hidden_channels": 128,
             "dropout": 0.4,
@@ -467,8 +496,8 @@ if __name__ == '__main__':
             model=model,
             optimizer=optimizer,
             train_loader=train_loader,
-            valid_loader=test_loader
+            valid_loader=valid_loader
         )
-        
+                
         (train_losses, train_scores), (valid_losses, test_scores) \
             = trainer.run(n_epochs=params["n_epochs"])
