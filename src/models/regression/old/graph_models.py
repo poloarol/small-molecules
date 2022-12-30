@@ -26,7 +26,7 @@ class GCN(torch.nn.Module):
         self.dropout = dropout
 
     def forward(self, data, edge_index, batch) -> Tuple:
-        datapoints, targets = data.x, data.y
+        datapoints, targets = data.X, data.y
         # 1. Obtain the node embeddings
         datapoints = self.conv_one(datapoints, edge_index)
         datapoints = datapoints.relu()
@@ -68,7 +68,7 @@ class GAT(torch.nn.Module):
         self.dropout = dropouts
     
     def forward(self, data, edge_index, batch) -> Tuple:
-        datapoints, targets = data.x, data.y
+        datapoints, targets = data.X, data.y
         
         # 1. Obtain the node embeddings
         datapoints = self.conv_one(datapoints, edge_index)
@@ -120,7 +120,7 @@ class Trainer:
         for _, datum in enumerate(tqdm_iter):
             tqdm_iter.set_description(f"Epoch {epoch}")
             self.optimizer.zero_grad()
-            output, loss = self.model(datum, datum.edge_index, datum.bacth)
+            output, loss = self.model(datum, datum.edge_index, datum.batch)
             targets = datum.y
             loss.backward()
             self.optimizer.step()

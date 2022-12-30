@@ -28,8 +28,8 @@ from src.models.vaes.gvae import GraphVAE
 from src.models.vaes.network_utils import (build_graph_decoder,
                                            build_graph_encoder)
 
-from src.models.regression.graph_models import GAT, GCN, Trainer
-from src.models.regression.custom_dataset import MoleculeDataset
+# from models.regression.old.graph_models import GAT, GCN, Trainer
+# from models.regression.old.custom_dataset import MoleculeDataset
 
 
 logging.basicConfig(
@@ -459,45 +459,45 @@ if __name__ == '__main__':
         device = torch.device("cudo:0" if torch.cuda.is_available() else "cpu")
         print("Device: ", device)
         
-        batch_size: int = 64
-        with open(file="data/processed/processed-solubility-dataset-train.pkl", mode="rb") as file:
-            train_dataset = pickle.load(file=file)
-        with open(file="data/processed/processed-solubility-dataset-valid.pkl", mode="rb") as file:
-            valid_dataset = pickle.load(file=file)
-        with open(file="data/processed/processed-solubility-dataset-test.pkl", mode="rb") as file:
-            test_dataset = pickle.load(file=file)
-        print(len(train_dataset), len(valid_dataset), len(test_dataset))
-        train_loader = DataLoader(train_dataset, batch_size=batch_size)
-        test_loader = DataLoader(test_dataset, batch_size=batch_size)
-        valid_loader = DataLoader(valid_dataset, batch_size=batch_size)
+        # batch_size: int = 64
+        # with open(file="data/processed/processed-solubility-dataset-train.pkl", mode="rb") as file:
+        #     train_dataset = pickle.load(file=file)
+        # with open(file="data/processed/processed-solubility-dataset-valid.pkl", mode="rb") as file:
+        #     valid_dataset = pickle.load(file=file)
+        # with open(file="data/processed/processed-solubility-dataset-test.pkl", mode="rb") as file:
+        #     test_dataset = pickle.load(file=file)
+
+        # train_loader = DataLoader(train_dataset, batch_size=batch_size)
+        # test_loader = DataLoader(test_dataset, batch_size=batch_size)
+        # valid_loader = DataLoader(valid_dataset, batch_size=batch_size)
                 
-        params: Dict = {
-            "hidden_channels": 128,
-            "dropout": 0.4,
-            "lr": 0.01,
-            "weight_decay": 7e-5,
-            "n_epochs": 30
-        }
+        # params: Dict = {
+        #     "hidden_channels": 128,
+        #     "dropout": 0.4,
+        #     "lr": 0.01,
+        #     "weight_decay": 7e-5,
+        #     "n_epochs": 30
+        # }
         
-        model = GCN(
-            n_features=30,
-            hidden_channels=params["hidden_channels"],
-            dropout=params["dropout"]
-        )
-        model.to(device)
+        # model = GCN(
+        #     n_features=30,
+        #     hidden_channels=params["hidden_channels"],
+        #     dropout=params["dropout"]
+        # )
+        # model.to(device)
         
-        optimizer = torch.optim.Adam(
-            model.parameters(),
-            lr=params["lr"],
-            weight_decay=params["weight_decay"]
-        )
+        # optimizer = torch.optim.Adam(
+        #     model.parameters(),
+        #     lr=params["lr"],
+        #     weight_decay=params["weight_decay"]
+        # )
         
-        trainer = Trainer(
-            model=model,
-            optimizer=optimizer,
-            train_loader=train_loader,
-            valid_loader=valid_loader
-        )
+        # trainer = Trainer(
+        #     model=model,
+        #     optimizer=optimizer,
+        #     train_loader=train_loader,
+        #     valid_loader=valid_loader
+        # )
                 
-        (train_losses, train_scores), (valid_losses, test_scores) \
-            = trainer.run(n_epochs=params["n_epochs"])
+        # (train_losses, train_scores), (valid_losses, test_scores) \
+        #     = trainer.run(n_epochs=params["n_epochs"])
