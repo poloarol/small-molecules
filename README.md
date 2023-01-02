@@ -111,6 +111,7 @@ Source:
 
 7. [Is Experimental Data Quality the Limiting Factor in Predicting the Aqueous Solubility of Driglike Molecules](https://pubs.acs.org/doi/full/10.1021/mp500103r)
 
+6. [FastFlows: Flow-Based Models for Molecular Graph Generation](https://arxiv.org/abs/2201.12419)
 
 Objectives
 ----------
