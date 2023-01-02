@@ -21,13 +21,13 @@ from tensorflow import keras
 from torch_geometric.data import DataLoader
 from wandb.keras import WandbCallback, WandbModelCheckpoint
 
-from src.models.gans.converter import Descriptors, GraphConverter, SmilesConverter
-from src.models.vaes.converter import DescriptorsVAE, GraphConverterVAE, SmilesConverterVAE
-from src.models.gans.network_utils import (build_graph_discriminator,
+from src.models.generative.gans.converter import Descriptors, GraphConverter, SmilesConverter
+from src.models.generative.vaes.converter import DescriptorsVAE, GraphConverterVAE, SmilesConverterVAE
+from src.models.generative.gans.network_utils import (build_graph_discriminator,
                                            build_graph_generator)
-from src.models.gans.wgan import GraphWGAN
-from src.models.vaes.gvae import GraphVAE
-from src.models.vaes.network_utils import (build_graph_decoder,
+from src.models.generative.gans.wgan import GraphWGAN
+from src.models.generative.vaes.gvae import GraphVAE
+from src.models.generative.vaes.network_utils import (build_graph_decoder,
                                            build_graph_encoder)
 
 # from models.regression.old.graph_models import GAT, GCN, Trainer
@@ -492,7 +492,10 @@ if __name__ == '__main__':
         with open(file="model/regressors/solubility-rf-sklearn.model", mode="rb") as file:
             model = joblib.load(filename=file)
         
-        predicted_solubility = model.predict(predictors)[0]
+        with open(file="model/regressors/solubility-standard-scaler-sklearn.model", mode="rb") as file:
+            scaler = joblib.load(filename=file)
+        
+        predicted_solubility = model.predict(scaler.transform(predictors))[0]
         
         print(f"Molecule: {args.smiles}. log(Solubility): {predicted_solubility:.3f} mol/L")
         
