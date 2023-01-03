@@ -283,7 +283,7 @@ if __name__ == '__main__':
         
         logger.info("Finished training GraphWGAN model and saved training weights to Weights and Biases")
         
-        path_to_save_model = os.path.join(os.getcwd(), f"models/gans/{args.name}/{current_time}")
+        path_to_save_model = os.path.join(os.getcwd(), f"models/generative/gans/{args.name}/{current_time}")
         os.makedirs(path_to_save_model, exist_ok=True)
         tf.saved_model.save(wgan, path_to_save_model)
         
@@ -381,7 +381,7 @@ if __name__ == '__main__':
             )
         
         logger.info("Finished training GraphVAE model and saved training weights to Weights and Biases")
-        path_to_save_model = os.path.join(os.getcwd(), f"models/vaes/{args.name}/{current_time}")
+        path_to_save_model = os.path.join(os.getcwd(), f"models/generative/vaes/{args.name}/{current_time}")
         os.makedirs(path_to_save_model, exist_ok=True)
         tf.saved_model.save(gvae, path_to_save_model)
         
@@ -389,7 +389,7 @@ if __name__ == '__main__':
         logger.info("Saved GraphVAE model")
     
     elif args.sample_gvae:
-        path_to_save_model = os.path.join(os.getcwd(), f"models/vaes/{args.name}")
+        path_to_save_model = os.path.join(os.getcwd(), f"models/generative/vaes/{args.name}")
         gvae = tf.saved_model.load(path_to_save_model)
         
         # molecules = gvae.inference(batch_size = 1000) # Not working
@@ -408,7 +408,7 @@ if __name__ == '__main__':
                 f.write(f"{s}\n")
         
     elif args.sample_wgan:
-        path_to_save_model = os.path.join(os.getcwd(), f"models/gans/{args.name}")
+        path_to_save_model = os.path.join(os.getcwd(), f"models/generative/gans/{args.name}")
         wgan = tf.saved_model.load(path_to_save_model)
                 
         molecules = sample(wgan.generator, model_type="WGAN", batch_size=100)
