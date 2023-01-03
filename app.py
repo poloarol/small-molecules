@@ -115,7 +115,7 @@ with main_container:
 
 with generative_container:
     model = st.radio("Choose a generative model.", ("", "GAN", "VAE", "NF"), horizontal=True)
-    
+    # TODO: Add ability to navigate along generated molecules. Add NL model
     if model == "GAN":
         wgan = load_tensorflow_models("model/generative/gans/qm9/2022-12-28_18-18-34")
         molecules = sample(wgan.generator, model_type="WGAN")

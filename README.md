@@ -86,6 +86,10 @@ We use easy to calculate RDKit descriptors, as described by [<i> Yalkowsky et al
 4. Predict solubility
     - python main.py --solubility --name `name of model` --smiles `smiles string`
 
+## Launch Streamlit App locally
+-------------------------------
+`streamlit run app.py`
+
 
 Implemented Models
 ---------------
