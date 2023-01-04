@@ -74,7 +74,7 @@ We use easy to calculate RDKit descriptors, as described by [<i> Yalkowsky et al
 -------------
 - Create your virtual environment
 - Install libraries in the `requirements.txt`
-- `unzip models.zip`
+- Getting models `unzip models.zip`
 
 1. Train Models:
     - WGAN-GP: python main.py --wgan --name `name of model`
