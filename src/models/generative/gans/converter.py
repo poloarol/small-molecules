@@ -24,9 +24,9 @@ class Descriptors(Enum):
         "Cl",
         "Br",
     ]
-    NUM_ATOMS: Final[int] = 9 #120
+    NUM_ATOMS: Final[int] = 9  # 120
     BOND_DIM: Final[int] = 5
-    ATOM_DIM: Final[int] = 5 #len(SMILE_CHARSET)
+    ATOM_DIM: Final[int] = 5  # len(SMILE_CHARSET)
 
 
 class DataConverter(ABC):
@@ -56,18 +56,9 @@ class DataConverter(ABC):
 
         # smile_to_idx.update(idx_to_simle)
         # return smile_to_idx
-        
-        atom_mapping = {
-            "C": 0,
-            0: "C",
-            "N": 1,
-            1: "N",
-            "O": 2,
-            2: "O",
-            "F": 3,
-            3: "F"
-        }
-        
+
+        atom_mapping = {"C": 0, 0: "C", "N": 1, 1: "N", "O": 2, 2: "O", "F": 3, 3: "F"}
+
         return atom_mapping
 
     def __get_bond_mapping(self) -> int:
@@ -92,7 +83,11 @@ class GraphConverter(DataConverter):
     def transform(self) -> Tuple:
         """build an adjacency and feature matrix of the molecule"""
         adjacency: np.array = np.zeros(
-            (Descriptors.BOND_DIM.value, Descriptors.NUM_ATOMS.value, Descriptors.NUM_ATOMS.value),
+            (
+                Descriptors.BOND_DIM.value,
+                Descriptors.NUM_ATOMS.value,
+                Descriptors.NUM_ATOMS.value,
+            ),
             "float32",
         )
         features: np.array = np.zeros(
@@ -113,12 +108,12 @@ class GraphConverter(DataConverter):
                 adjacency[
                     bond_type_idx, [atom_idx, neighbour_idx], [neighbour_idx, atom_idx]
                 ] = 1
-        
+
         # Where no bond, add 1 to last channel (indicating "non-bond")
         # Notice: channels-first
-        
+
         adjacency[-1, np.sum(adjacency, axis=0) == 0] = 1
-        
+
         # Where no atom, add 1 to last column (indicating "non-atom")
         features[np.where(np.sum(features, axis=1) == 0)[0], -1] = 1
 

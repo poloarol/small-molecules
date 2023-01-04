@@ -6,6 +6,7 @@ from typing import Dict, Final
 import tensorflow as tf
 from tensorflow import keras
 
+
 class GAN(keras.Model):
     """
     Abstract class to build a
@@ -40,6 +41,7 @@ class GAN(keras.Model):
     @abstractmethod
     def _loss_generator(self, generated_input) -> float:
         """Calculate the loss of the discriminator"""
+
 
 if __name__ == "__main__":
     pass

@@ -37,19 +37,15 @@ class DataConverter(ABC):
 
     def __get_atom_mapping(self) -> Dict[int, str]:
         """map atoms to indices"""
-        
+
         CHAR_SET = DescriptorsVAE.SMILE_CHARSET.value
-        
-        smile_to_idx: Dict[str, int] = {
-            char: idx for idx, char in enumerate(CHAR_SET)
-        }
-        idx_to_simle: Dict[int, str] = {
-            idx: char for idx, char in enumerate(CHAR_SET)
-        }
-        
+
+        smile_to_idx: Dict[str, int] = {char: idx for idx, char in enumerate(CHAR_SET)}
+        idx_to_simle: Dict[int, str] = {idx: char for idx, char in enumerate(CHAR_SET)}
+
         atom_mapping: Dict = dict(smile_to_idx)
         atom_mapping.update(idx_to_simle)
-        
+
         return atom_mapping
 
     def __get_bond_mapping(self) -> int:
@@ -74,7 +70,11 @@ class GraphConverterVAE(DataConverter):
     def transform(self) -> Tuple:
         """build an adjacency and feature matrix of the molecule"""
         adjacency: np.array = np.zeros(
-            (DescriptorsVAE.BOND_DIM.value, DescriptorsVAE.NUM_ATOMS.value, DescriptorsVAE.NUM_ATOMS.value),
+            (
+                DescriptorsVAE.BOND_DIM.value,
+                DescriptorsVAE.NUM_ATOMS.value,
+                DescriptorsVAE.NUM_ATOMS.value,
+            ),
             "float32",
         )
         features: np.array = np.zeros(
@@ -95,9 +95,9 @@ class GraphConverterVAE(DataConverter):
                 adjacency[
                     bond_type_idx, [atom_idx, neighbour_idx], [neighbour_idx, atom_idx]
                 ] = 1
-        
-        adjacency[-1, np.sum(adjacency, axis = 0) == 0] = 1
-        features[np.where(np.sum(features, axis = 1) == 0)[0], -1] = 1
+
+        adjacency[-1, np.sum(adjacency, axis=0) == 0] = 1
+        features[np.where(np.sum(features, axis=1) == 0)[0], -1] = 1
 
         return adjacency, features
 

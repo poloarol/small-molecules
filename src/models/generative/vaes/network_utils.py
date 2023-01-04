@@ -13,8 +13,9 @@ class Sampling(layers.Layer):
         batch = tf.shape(z_log_var)[0]
         dim = tf.shape(z_log_var)[1]
         epsilon = keras.backend.random_normal(shape=(batch, dim))
-        
+
         return z_mean + tf.math.exp(0.5 * z_log_var) * epsilon
+
 
 class RelationalConvGraphLayer(layers.Layer):
     """
@@ -64,7 +65,7 @@ class RelationalConvGraphLayer(layers.Layer):
                 name="bias",
                 dtype=tf.float32,
             )
-        
+
         self.built = True
 
     def call(self, inputs, training: bool = False):
@@ -92,7 +93,7 @@ def build_graph_encoder(
 ):
     adjacency = layers.Input(shape=adjacency_shape)
     features = layers.Input(shape=features_shape)
-    
+
     # Propagate through one or more graph convolutional layers
     features_transformed = features
     for unit in gconv_units:
@@ -101,7 +102,7 @@ def build_graph_encoder(
         )
     # Reduce 2-D representation of molecule to 1-D
     x_var = layers.GlobalAveragePooling1D()(features_transformed)
-    
+
     # Propagate through one or more densely connected layers
     for unit in dense_units:
         x_var = layers.Dense(units=unit, activation="relu")(x_var)
@@ -109,10 +110,11 @@ def build_graph_encoder(
 
     z_mean = layers.Dense(units=latent_dim, dtype="float32", name="z_mean")(x_var)
     log_var = layers.Dense(units=latent_dim, dtype="float32", name="log_var")(x_var)
-    
+
     encoder = keras.Model([adjacency, features], [z_mean, log_var], name="encoder")
-    
+
     return encoder
+
 
 def build_graph_decoder(
     dense_units: int,

@@ -14,14 +14,18 @@ class VAE(keras.Model):
     Variational Adversarial Network
     """
 
-    def __init__(self, encoder: keras.Model, decoder: keras.Model, max_length: int, **kwargs) -> None:
+    def __init__(
+        self, encoder: keras.Model, decoder: keras.Model, max_length: int, **kwargs
+    ) -> None:
         super().__init__(**kwargs)
         self.encoder: keras.Model = encoder
         self.decoder: keras.Model = decoder
         self.max_length: int = max_length
         self.property_prediction_layer = layers.Dense(1)
         self.total_loss_tracker = keras.metrics.Mean(name="total_loss")
-        self.reconstruction_loss_tracker = keras.metrics.Mean(name="reconstruction_loss")
+        self.reconstruction_loss_tracker = keras.metrics.Mean(
+            name="reconstruction_loss"
+        )
         self.kl_loss_tracker = keras.metrics.Mean(name="kl_loss")
 
     @abstractmethod

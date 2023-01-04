@@ -3,10 +3,11 @@
 from typing import Dict, Final
 
 import tensorflow as tf
+from tensorflow import keras
+
 from .converter import Descriptors
 # from .gan import GAN
 from .network_utils import build_graph_discriminator, build_graph_generator
-from tensorflow import keras
 
 
 class GraphWGAN(keras.Model):
@@ -39,7 +40,6 @@ class GraphWGAN(keras.Model):
         self.optimizer_discriminator: float = discriminator_opt
         self.metric_generator = keras.metrics.Mean(name="loss_gen")
         self.metric_discriminator = keras.metrics.Mean(name="loss_dis")
-
 
     def _loss_discriminator(self, real_input, generated_input) -> float:
         logits_real = self.discriminator(real_input, training=True)
@@ -115,7 +115,9 @@ class GraphWGAN(keras.Model):
                 graph_generated = self.generator(latent_space, training=True)
                 loss = self._loss_generator(graph_generated)
 
-                grads = discriminator_tape.gradient(loss, self.generator.trainable_weights)
+                grads = discriminator_tape.gradient(
+                    loss, self.generator.trainable_weights
+                )
                 self.optimizer_generator.apply_gradients(
                     zip(grads, self.generator.trainable_weights)
                 )

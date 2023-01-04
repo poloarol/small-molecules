@@ -55,7 +55,7 @@ class RelationalConvGraphLayer(layers.Layer):
                 name="bias",
                 dtype=tf.float32,
             )
-        
+
         self.built = True
 
     def call(self, inputs, training: bool = False):
@@ -461,8 +461,9 @@ def cycle_gan_generator(input_shape=(56,), nn_size: str = "big") -> keras.Model:
         model = medium_layer()
     elif nn_size == "small":
         model = small_layer()
-    
+
     return model
+
 
 if __name__ == "__main__":
     pass
