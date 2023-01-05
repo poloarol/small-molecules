@@ -4,7 +4,6 @@ import os
 import time
 from typing import List
 
-import deepchem as dc
 import joblib
 import numpy as np
 import pandas as pd

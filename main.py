@@ -8,7 +8,7 @@ import os
 import pickle
 from typing import Any, Dict, Final, List, Tuple
 
-import deepchem as dc
+# import deepchem as dc
 import joblib
 import matplotlib.pyplot as plt
 import numpy as np
@@ -17,7 +17,7 @@ from rdkit import Chem
 from rdkit.Chem import Descriptors as descriptors
 from rdkit.Chem.Draw import MolsToGridImage
 from tensorflow import keras
-from torch_geometric.data import DataLoader
+# from torch_geometric.data import DataLoader
 from wandb.keras import WandbCallback, WandbModelCheckpoint
 
 import wandb
