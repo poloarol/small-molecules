@@ -116,7 +116,7 @@ with generative_container:
     )
 
     if model == "GAN":
-        wgan = load_tensorflow_models("model/generative/gans/qm9/2022-12-28_18-18-34")
+        wgan = load_tensorflow_models("model/generative/gans/qm9/2023-01-05_12-58-04")
 
         if st.button("Reset WGAN", key="wgan_reset"):
             st.session_state["wgan_generated"] = False
@@ -176,22 +176,24 @@ with generative_container:
                 f"Molecular Weight: {descriptors.MolWt(descriptor):.3f} g/mol"
             )
             props_col.text(f"log(Solubility): {predicted_solubility:.3f} mol/L")
+            mean_tanimoto: float = np.mean(tanimoto_similarity(data, descriptor))
+            std_tanimoto: float = np.std(tanimoto_similarity(data, descriptor))
             props_col.text(
-                f"Mean Tanimoto Similarity: {np.mean(tanimoto_similarity(data, descriptor)):.3f} +/- {np.std(tanimoto_similarity(data, descriptor)):.3f}"
+                f"Mean Tanimoto Similarity: {mean_tanimoto:.3f} +/- {std_tanimoto:.3f}"
             )
 
         else:
             st.text("No valid molecule was generated. Try Again!")
 
     elif model == "VAE":
-        gvae = load_tensorflow_models("model/generative/vaes/zinc/2022-12-28_16-10-54")
+        gvae = load_tensorflow_models("model/generative/vaes/zinc/2023-01-05_16-53-59")
 
         if st.button("Reset GVAE", key="gvae_reset"):
             st.session_state["gvae_generated"] = False
             st.session_state["gvae_index"] = 0
 
         if not st.session_state["gvae_generated"]:
-            molecules = sample(model=gvae.decoder, model_type="GVAE")
+            molecules = sample(model=gvae.decoder, model_type="GVAE", batch_size=50)
             st.session_state["gvae_molecules"] = [
                 molecule for molecule in molecules if molecule
             ]
@@ -246,11 +248,15 @@ with generative_container:
                 f"Molecular Weight: {descriptors.MolWt(descriptor):.3f} g/mol"
             )
             props_col.text(f"log(Solubility): {predicted_solubility:.3f} mol/L")
+            mean_tanimoto: float = np.mean(tanimoto_similarity(data, descriptor))
+            std_tanimoto: float = np.std(tanimoto_similarity(data, descriptor))
             props_col.text(
-                f"Mean Tanimoto Similarity: {np.mean(tanimoto_similarity(data, descriptor)):.3f} +/- {np.std(tanimoto_similarity(data, descriptor)):.3f}"
+                f"Mean Tanimoto Similarity: {mean_tanimoto:.3f} +/- {std_tanimoto:.3f}"
             )
         else:
             st.text("No valid molecule was generated. Try Again!")
 
+    elif model == "NMF":
+        st.text("Generative Normalizng Flow model (NF) to be added...")
     else:
         pass

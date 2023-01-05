@@ -72,13 +72,15 @@ We use easy to calculate RDKit descriptors, as described by [<i> Yalkowsky et al
 
 ## How to Use
 -------------
+
+### Command line
 - Create your virtual environment
 - Install libraries in the `requirements.txt`
 - Getting models `unzip models.zip`
 
 1. Train Models:
-    - WGAN-GP: python main.py --wgan --name `name of model`
-    - gVAE: python main.py --gvae --name `name of model`
+    - WGAN-GP: python main.py --wgan --name `name of database`
+    - gVAE: python main.py --gvae --name `name of database`
 2. Sample latent space:
     - WGAN-GP: python main.py --sample_wgan --name `name of model`
     - gVAE: python main.py --sample_gvae --name `name of model`
@@ -86,6 +88,10 @@ We use easy to calculate RDKit descriptors, as described by [<i> Yalkowsky et al
     - python main.py --latent --name `name of model`
 4. Predict solubility
     - python main.py --solubility --name `name of model` --smiles `smiles string`
+
+### Building Docker Image
+- docker build . -t `docker-name-app` --no-cache
+- docker run -it -p 8501:8501 `docker-app-name`
 
 ## Launch Streamlit App locally
 -------------------------------

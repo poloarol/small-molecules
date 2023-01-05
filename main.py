@@ -5,7 +5,7 @@ import csv
 import datetime
 import logging
 import os
-import pickle
+import random
 from typing import Any, Dict, Final, List, Tuple
 
 # import deepchem as dc
@@ -113,7 +113,7 @@ def wandb_initialization() -> Dict[str, Any]:
             Descriptors.NUM_ATOMS.value,
         ),
         "feature_shape": (Descriptors.NUM_ATOMS.value, Descriptors.ATOM_DIM.value),
-        "epochs": 100,
+        "epochs": 10,
         "batch_size": 32,
         "latent_dim": 64,
         "gconv_units": [128, 128, 128, 128],
@@ -133,8 +133,10 @@ def sample(
     descriptors = None
     if model_type == "GVAE":
         descriptors = DescriptorsVAE
+        smilesconverter = SmilesConverterVAE
     else:
         descriptors = Descriptors
+        smilesconverter = SmilesConverter
 
     latent_space = tf.random.normal((batch_size, latent_dim))
     graph = model(latent_space)
@@ -148,8 +150,7 @@ def sample(
     features = tf.one_hot(features, depth=descriptors.ATOM_DIM.value, axis=2)
 
     return [
-        SmilesConverter([adjacency[i].numpy(), features[i].numpy()]).transform()
-        for i in range(batch_size)
+        smilesconverter([adjacency[i].numpy(), features[i].numpy()]).transform() for i in range(batch_size)
     ]
 
 
@@ -213,9 +214,9 @@ if __name__ == "__main__":
 
     if args.wgan:
 
-        logger = logging.getLogger(name="WGAN-training")
+        # logger = logging.getLogger(name="WGAN-training")
 
-        logger.info("Loading QM9 training dataset...")
+        # logger.info("Loading QM9 training dataset...")
         molecules = load_qm("data/qm9.csv")
 
         adjacency_tensors = []
@@ -236,23 +237,23 @@ if __name__ == "__main__":
             adjacency_tensors.append(adjacency)
             features_tensors.append(features)
 
-        logger.info("Finished loading QM9 dataset...")
+        # logger.info("Finished loading QM9 dataset...")
 
         adjacency_tensors = tf.convert_to_tensor(adjacency_tensors)
         features_tensors = tf.convert_to_tensor(features_tensors)
 
-        logger.info(
-            f"Adjacency tensors shape: {adjacency_tensors.shape}\
-            - Feature tensors shape: {features_tensors.shape}"
-        )
+        # logger.info(
+        #     f"Adjacency tensors shape: {adjacency_tensors.shape}\
+        #     - Feature tensors shape: {features_tensors.shape}"
+        # )
 
         wandb.init(project="GAN-small-molecule-generation")
         wandb.config = wandb_initialization()
         config = wandb.config
 
-        logger.info(
-            "Finishing setting up WGAN training parameters and logged them to Weights & Biases"
-        )
+        # logger.info(
+        #     "Finishing setting up WGAN training parameters and logged them to Weights & Biases"
+        # )
 
         generator = build_graph_generator(
             dense_units=config["generator_dense_units"],
@@ -269,9 +270,9 @@ if __name__ == "__main__":
             feature_shape=config["feature_shape"],
         )
 
-        logger.info("Successfully built generator and discriminator models")
-        logger.info(generator.summary())
-        logger.info(discriminator.summary())
+        # logger.info("Successfully built generator and discriminator models")
+        # logger.info(generator.summary())
+        # logger.info(discriminator.summary())
 
         # generator.summary()
         # print("======================================================================================== \n")
@@ -279,13 +280,13 @@ if __name__ == "__main__":
         # discriminator.summary()
 
         wgan = GraphWGAN(discriminator_model=discriminator, generator_model=generator)
-        logger.info("Successfully built GraphWGAN model")
+        # logger.info("Successfully built GraphWGAN model")
 
         wgan.compile(
             generator_opt=config["generator_opt"],
             discriminator_opt=config["discriminator_opt"],
         )
-        logger.info("Successfully compiled GraphWGAN model")
+        # logger.info("Successfully compiled GraphWGAN model")
 
         history = wgan.fit(
             [adjacency_tensors, features_tensors],
@@ -298,29 +299,30 @@ if __name__ == "__main__":
 
         wandb.finish()
 
-        logger.info(
-            "Finished training GraphWGAN model and saved training weights to Weights and Biases"
-        )
+        # logger.info(
+        #     "Finished training GraphWGAN model and saved training weights to Weights and Biases"
+        # )
 
         path_to_save_model = os.path.join(
-            os.getcwd(), f"models/generative/gans/{args.name}/{current_time}"
+            os.getcwd(), f"model/generative/gans/{args.name}/{current_time}"
         )
         os.makedirs(path_to_save_model, exist_ok=True)
         tf.saved_model.save(wgan, path_to_save_model)
 
-        logger.info("Saved GraphWGAN model")
+        # logger.info("Saved GraphWGAN model")
 
     elif args.gvae:
 
-        logger = logging.getLogger(name="GVAE-training")
+        # logger = logging.getLogger(name="GVAE-training")
         data = load_zinc("data/zinc.csv")
 
         adjacency_tensors = []
         features_tensors = []
         qed_tensors = []
 
-        logger.info("Preparing Zinc dataset...")
-        for i, molecule in enumerate(data["smiles"][:5000]):
+        # logger.info("Preparing Zinc dataset...")
+        qm_dataset = random.sample(data["smiles"], 10000)
+        for i, molecule in enumerate(qm_dataset):
             smiles = None
             try:
                 smiles = Chem.MolFromSmiles(molecule)
@@ -336,17 +338,17 @@ if __name__ == "__main__":
             features_tensors.append(features)
             qed_tensors.append(data["qed"][i])
 
-        logger.info("Finished loading Zinc dataset...")
+        # logger.info("Finished loading Zinc dataset...")
 
         adjacency_tensors = tf.convert_to_tensor(adjacency_tensors, dtype="float32")
         features_tensors = tf.convert_to_tensor(features_tensors, dtype="float32")
         qed_tensors = tf.convert_to_tensor(qed_tensors, dtype="float32")
 
-        logger.info(
-            f"Adjacency tensors shape: {adjacency_tensors.shape} -\
-                        Features tensors shape: {features_tensors.shape} -\
-                        QED tensors shape: {qed_tensors.shape}"
-        )
+        # logger.info(
+        #     f"Adjacency tensors shape: {adjacency_tensors.shape} -\
+        #                 Features tensors shape: {features_tensors.shape} -\
+        #                 QED tensors shape: {qed_tensors.shape}"
+        # )
 
         wandb.init(
             project="VAE-small-molecule-generation",
@@ -355,9 +357,9 @@ if __name__ == "__main__":
         wandb.config = wandb_initialization()
         config = wandb.config
 
-        logger.info(
-            "Finishing setting up GVAE training parameters and logged them to Weights & Biases"
-        )
+        # logger.info(
+        #     "Finishing setting up GVAE training parameters and logged them to Weights & Biases"
+        # )
 
         optimizer = config["generator_opt"]
         encoder = build_graph_encoder(
@@ -390,16 +392,16 @@ if __name__ == "__main__":
             ),
         )
 
-        logger.info("Successfully built encoder and decoder models")
-        logger.info(encoder.summary())
-        logger.info(decoder.summary())
+        # logger.info("Successfully built encoder and decoder models")
+        # logger.info(encoder.summary())
+        # logger.info(decoder.summary())
 
         gvae = GraphVAE(
             encoder=encoder, decoder=decoder, latent_dim=config["latent_dim"]
         )
-        logger.info("Successfully built GraphVAE model")
+        # logger.info("Successfully built GraphVAE model")
         gvae.compile(optimizer)
-        logger.info("Successfully compiled GraphVAE model")
+        # logger.info("Successfully compiled GraphVAE model")
 
         history = gvae.fit(
             [adjacency_tensors, features_tensors, qed_tensors],
@@ -410,21 +412,21 @@ if __name__ == "__main__":
             use_multiprocessing=True,
         )
 
-        logger.info(
-            "Finished training GraphVAE model and saved training weights to Weights and Biases"
-        )
+        # logger.info(
+        #     "Finished training GraphVAE model and saved training weights to Weights and Biases"
+        # )
         path_to_save_model = os.path.join(
-            os.getcwd(), f"models/generative/vaes/{args.name}/{current_time}"
+            os.getcwd(), f"model/generative/vaes/{args.name}/{current_time}"
         )
         os.makedirs(path_to_save_model, exist_ok=True)
         tf.saved_model.save(gvae, path_to_save_model)
 
         wandb.finish()
-        logger.info("Saved GraphVAE model")
+        # logger.info("Saved GraphVAE model")
 
     elif args.sample_gvae:
         path_to_save_model = os.path.join(
-            os.getcwd(), f"models/generative/vaes/{args.name}"
+            os.getcwd(), f"model/generative/vaes/{args.name}"
         )
         gvae = tf.saved_model.load(path_to_save_model)
 
@@ -450,7 +452,7 @@ if __name__ == "__main__":
 
     elif args.sample_wgan:
         path_to_save_model = os.path.join(
-            os.getcwd(), f"models/generative/gans/{args.name}"
+            os.getcwd(), f"model/generative/gans/{args.name}"
         )
         wgan = tf.saved_model.load(path_to_save_model)
 
@@ -500,7 +502,7 @@ if __name__ == "__main__":
         adjacency_tensors = tf.convert_to_tensor(adjacency_tensors)
         features_tensors = tf.convert_to_tensor(features_tensors)
 
-        path_to_save_model = os.path.join(os.getcwd(), f"models/vaes/{args.name}")
+        path_to_save_model = os.path.join(os.getcwd(), f"model/generative/vaes/{args.name}")
         gvae = tf.saved_model.load(path_to_save_model)
 
         z_mean, _ = gvae.encoder([adjacency_tensors, features_tensors])

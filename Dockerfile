@@ -1,6 +1,6 @@
 # Dockerfile, Image, Container
 
-From python:3.9
+From python:3.10.9
 
 EXPOSE 8501
 
@@ -24,7 +24,7 @@ RUN pip install -r requirements.txt --no-cache-dir
 
 RUN pip install wandb
 
-RUN cp builder.py /usr/local/lib/python3.9/site-packages/google/protobuf/internal/
+RUN cp builder.py /usr/local/lib/python3.10/site-packages/google/protobuf/internal/
 
 ENV PYTHONPATH = "."
 
