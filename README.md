@@ -93,6 +93,10 @@ We use easy to calculate RDKit descriptors, as described by [<i> Yalkowsky et al
 - docker build . -t `docker-name-app` --no-cache
 - docker run -it -p 8501:8501 `docker-app-name`
 
+### Use built docker image
+- docker pull `adjon081/small-molecules:latest`
+- docker run -it -p 8501:8501 `small-molecules-streamlit`
+
 ## Launch Streamlit App locally
 -------------------------------
 `streamlit run app.py`
