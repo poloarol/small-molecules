@@ -4,9 +4,11 @@ import os
 import time
 from typing import List
 
+from deepchem.models.normalizing_flows import NormalizingFlowModel
 import joblib
 import numpy as np
 import pandas as pd
+import selfies as sf
 import streamlit as st
 import tensorflow as tf
 from rdkit import Chem
@@ -15,6 +17,7 @@ from rdkit.Chem import Draw
 from tensorflow import keras
 
 from main import get_solubility_parameters, sample
+from main import get_normalizing_flow_layer, get_selfies_alphabet
 from src.utils.evaluations import tanimoto_similarity
 
 main_container = st.container()
@@ -38,8 +41,12 @@ def load_tensorflow_models(filename: str):
 
 
 @st.cache(allow_output_mutation=True)
-def load_deepchem_models(filename: str):
-    pass
+def load_normalizing_flow_model():
+    nf = get_normalizing_flow_layer(dim=2000)
+    nfm = NormalizingFlowModel(nf, learning_rate = 1e-4, batch_size = 128, model_dir="model/generative/flow/generative-normalizing-flow")
+    nfm.restore()
+    
+    return nfm
 
 
 def get_image(molecule):
@@ -256,7 +263,64 @@ with generative_container:
         else:
             st.text("No valid molecule was generated. Try Again!")
 
-    elif model == "NMF":
-        st.text("Generative Normalizng Flow model (NF) to be added...")
+    elif model == "NF":
+        nfm = load_normalizing_flow_model()
+        
+        generated_samples = nfm.flow.sample(20)
+        log_probs = nfm.flow.log_probs(generated_samples)
+        
+        mols = tf.math.floor(generated_samples)
+        mols = tf.clip_by_value(mols, 0, 1)
+        
+        int_to_symbol = dict((i, c) for i, c in enumerate(get_selfies_alphabet()))
+        
+        mols = mols.numpy().tolist()
+        selfies_molecule = sf.encoding_to_selfies(mols, vocab_itos=int_to_symbol, enc_type="one_hot")
+        
+        smiles = sf.decoder(selfies_molecule)
+        molecules = [Chem.SmilesFromMol(mol) for mol in smiles]
+        
+        st.text("Generating small molecules using Normalizing Flow...")
+        index = 0
+
+        prevb, _, nextb = st.columns([1, 5, 1])
+        if prevb.button("Previous", key="prev"):
+            if index - 1 < 0:
+                st.session_state["gvae_index"] = len(smiles)
+            else:
+                st.session_state["gvae_index"] = st.session_state["gvae_index"] - 1
+
+        if nextb.button("Next", key="next"):
+            if index > len(smiles) - 1:
+                st.session_state["gvae_index"] = 0
+            else:
+                st.session_state["gvae_index"] = index + 1
+
+        img_col, props_col = st.columns(2)
+        img = get_image(molecules[index])
+
+        img_col.text(f"Generated {index+1} out of {len(molecules)} molecules")
+        img_col.image(img, caption=smiles[index])
+
+        descriptor = Chem.MolFromSmiles(smiles[0])
+        predictors = np.array([get_solubility_parameters(descriptor)])
+        predicted_solubility = solubility_model.predict(
+            solubility_scaler.transform(predictors)
+        )[0]
+
+        data = st.session_state["QM9"]
+
+        props_col.text("Physico-Chemical Properties")
+        props_col.text(f"SMILES Descriptor: {smiles[index]}")
+        props_col.text(
+            f"Molecular Weight: {descriptors.MolWt(descriptor):.3f} g/mol"
+        )
+        props_col.text(f"log(Solubility): {predicted_solubility:.3f} mol/L")
+        mean_tanimoto: float = np.mean(tanimoto_similarity(data, descriptor))
+        std_tanimoto: float = np.std(tanimoto_similarity(data, descriptor))
+        props_col.text(
+            f"Tanimoto Similarity: {mean_tanimoto:.3f} +/- {std_tanimoto:.3f}"
+        )
+        
     else:
         pass

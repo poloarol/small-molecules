@@ -8,11 +8,15 @@ import os
 import random
 from typing import Any, Dict, Final, List, Tuple
 
-# import deepchem as dc
+from deepchem.molnet import load_qm9
+from deepchem.models.normalizing_flows import NormalizingFlow, NormalizingFlowModel
 import joblib
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
+import selfies as sf
 import tensorflow as tf
+import tensorflow_probability as tfp
 from rdkit import Chem
 from rdkit.Chem import Descriptors as descriptors
 from rdkit.Chem.Draw import MolsToGridImage
@@ -33,8 +37,8 @@ from src.models.generative.vaes.gvae import GraphVAE
 from src.models.generative.vaes.network_utils import (build_graph_decoder,
                                                       build_graph_encoder)
 
-# from models.regression.old.graph_models import GAT, GCN, Trainer
-# from models.regression.old.custom_dataset import MoleculeDataset
+tfd = tfp.distributions
+tfb = tfp.bijectors
 
 
 logging.basicConfig(
@@ -186,6 +190,60 @@ def get_solubility_parameters(smiles) -> List[float]:
 
     row = [mol_log_p, mol_weight, num_rot_bonds, aromatic_proportion]
     return row
+
+def get_normalizing_flow_layer(dim: int):
+    base_dist = tfd.MultivariateNormalDiag(loc=np.zeros(dim), scale_diag=np.ones(dim))
+
+    if dim % 2 == 0:
+        permutation = tf.cast(np.concatenate((np.arange(dim / 2, dim), np.arange(0, dim / 2))), tf.int32)
+    else:
+        permutation = tf.cast(np.concatenate((np.arange(dim / 2 + 1, dim), np.arange(0, dim / 2))), tf.int32)
+        
+    num_layers = 8
+    flow_layers = []
+
+    Made = tfb.AutoregressiveNetwork(params=2, hidden_units=[521, 521], activation="relu")
+
+    for _ in range(num_layers):
+        flow_layers.append(
+            (tfb.MaskedAutoregressiveFlow(shift_and_log_scale_fn=Made))
+        )
+        
+        permutation = tf.cast(np.random.permutation(np.arange(0, dim)), tf.int32)
+        flow_layers.append(tfb.Permute(permutation=permutation))
+
+    nf = NormalizingFlow(base_distribution=base_dist, flow_layers=flow_layers)
+    
+    return nf
+
+def process_smiles(smiles):
+    return sf.encoder(smiles)
+
+def get_selfies_alphabet():
+    _, datasets, _ = load_qm9(featurizer="ECFP")
+    df = pd.DataFrame(data={"smiles" : datasets[0].ids})
+    
+    data = df[["smiles"]].sample(2500, random_state=42)
+    
+    sf.set_semantic_constraints() # reset constraints
+    constraints = sf.get_semantic_constraints()
+    constraints["?"] = 3
+
+    sf.set_semantic_constraints(constraints)
+    constraints
+    
+    data["selfies"] = data["smiles"].apply(process_smiles)
+
+    data["len"] = data["smiles"].apply(lambda x: len(x))
+    data.sort_values(by="len").head()
+    
+    selfies_list = np.asanyarray(data["selfies"])
+    selfies_alphabet = sf.get_alphabet_from_selfies(selfies_list)
+    selfies_alphabet.add("[nop]") # Ass the "no operation" symbol as a padding character
+    selfies_alphabet.add(".")
+    selfies_alphabet = list(sorted(selfies_alphabet))
+    
+    return selfies_alphabet
 
 
 if __name__ == "__main__":
@@ -554,3 +612,24 @@ if __name__ == "__main__":
         print(
             f"Molecule: {args.smiles}. log(Solubility): {predicted_solubility:.3f} mol/L"
         )
+
+    elif args.sample_flow:
+        nf = get_normalizing_flow_layer(dim=2000)
+        nfm = NormalizingFlowModel(nf, learning_rate = 1e-4, batch_size = 128, model_dir="model/generative/flow/generative-normalizing-flow")
+        nfm.restore()
+        
+        generated_samples = nfm.flow.sample(20)
+        log_probs = nfm.flow.log_probs(generated_samples)
+        
+        mols = tf.math.floor(generated_samples)
+        mols = tf.clip_by_value(mols, 0, 1)
+        
+        int_to_symbol = dict((i, c) for i, c in enumerate(get_selfies_alphabet()))
+        
+        mols = mols.numpy().tolist()
+        selfies_molecule = sf.encoding_to_selfies(mols, vocab_itos=int_to_symbol, enc_type="one_hot")
+        
+        smile_molecule = sf.decoder(selfies_molecule)
+        
+        print("SELFIES: ", selfies_molecule)
+        print("SMILES: ", smile_molecule)
