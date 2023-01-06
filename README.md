@@ -1,5 +1,7 @@
 # Small Molecule
 
+[<b>Try the App :smiley: </b>](https://generative-model-small-molecule-streamlit-app-jslsxy75mq-uc.a.run.app/)
+
 Motivation:
 -----------
 The development of new drugs (molecules) can be extremely time-consuming and costly.
@@ -92,6 +94,10 @@ We use easy to calculate RDKit descriptors, as described by [<i> Yalkowsky et al
 ### Building Docker Image
 - docker build . -t `docker-name-app` --no-cache
 - docker run -it -p 8501:8501 `docker-app-name`
+
+### Use built docker image
+- docker pull `adjon081/small-molecules:latest`
+- docker run -it -p 8501:8501 `small-molecules-streamlit`
 
 ## Launch Streamlit App locally
 -------------------------------
