@@ -1,5 +1,7 @@
 # Small Molecule
 
+[<b>Try the App :smiley: </b>](https://generative-model-small-molecule-streamlit-app-jslsxy75mq-uc.a.run.app/)
+
 Motivation:
 -----------
 The development of new drugs (molecules) can be extremely time-consuming and costly.
